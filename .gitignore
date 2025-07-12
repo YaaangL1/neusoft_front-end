@@ -1,0 +1,83 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
+.pnpm-store/
+
+# Build output
+dist
+dist-ssr
+*.local
+
+# Test coverage
+coverage
+
+# Editor and IDE files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+*.js.map
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Cache files
+.cache
+.temp
+.eslintcache
+.stylelintcache
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Optional: Cypress test files
+/cypress/videos/
+/cypress/screenshots/
+/cypress/downloads/
+
+# Optional: Vite
+.vite/
+
+# Optional: Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
+
+
+doc/
+.vscode/
