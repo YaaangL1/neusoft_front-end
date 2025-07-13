@@ -1,9 +1,34 @@
+<!-- 费用查询 -->
 <template>
   <div class="expense-container">
     <!-- 搜索栏 -->
     <el-card class="search-card">
       <el-form :inline="true" :model="searchForm" ref="searchFormRef">
-        <el-form-item label="统计时间" prop="dateRange">
+        <el-form-item label="参保人">
+          <el-select
+            v-model="searchForm.personId"
+            placeholder="请选择参保人"
+            filterable
+            remote
+            :remote-method="searchPerson"
+            :loading="personLoading"
+          >
+            <el-option
+              v-for="item in personOptions"
+              :key="item.id"
+              :label="item.realName"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="费用类型">
+          <el-select v-model="searchForm.expenseType" placeholder="请选择费用类型" clearable>
+            <el-option label="药品费用" value="drug" />
+            <el-option label="诊疗费用" value="treatment" />
+            <el-option label="医疗服务费用" value="service" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="费用日期">
           <el-date-picker
             v-model="searchForm.dateRange"
             type="daterange"
@@ -11,15 +36,8 @@
             start-placeholder="开始日期"
             end-placeholder="结束日期"
             value-format="YYYY-MM-DD"
+            @change="handleDateRangeChange"
           />
-        </el-form-item>
-        <el-form-item label="费用类型" prop="expenseType">
-          <el-select v-model="searchForm.expenseType" placeholder="请选择费用类型" clearable>
-            <el-option label="门诊费用" :value="1" />
-            <el-option label="住院费用" :value="2" />
-            <el-option label="药品费用" :value="3" />
-            <el-option label="检查费用" :value="4" />
-          </el-select>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
@@ -36,94 +54,44 @@
 
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="statistics-row">
-      <el-col :span="6">
+      <el-col :span="8">
         <el-card shadow="hover" class="statistics-card">
           <template #header>
             <div class="card-header">
-              <span>总申请金额</span>
+              <span>总费用</span>
               <el-tag size="small" type="info">累计</el-tag>
             </div>
           </template>
           <div class="statistics-value">
             <span class="number">¥{{ formatAmount(statistics.totalAmount) }}</span>
           </div>
-          <div class="statistics-compare">
-            较上月
-            <span :class="statistics.amountGrowth >= 0 ? 'up' : 'down'">
-              {{ Math.abs(statistics.amountGrowth).toFixed(2) }}%
-              <el-icon>
-                <component :is="statistics.amountGrowth >= 0 ? 'ArrowUp' : 'ArrowDown'" />
-              </el-icon>
-            </span>
-          </div>
         </el-card>
       </el-col>
 
-      <el-col :span="6">
+      <el-col :span="8">
         <el-card shadow="hover" class="statistics-card">
           <template #header>
             <div class="card-header">
-              <span>总报销金额</span>
+              <span>药品费用</span>
               <el-tag size="small" type="success">累计</el-tag>
             </div>
           </template>
           <div class="statistics-value">
-            <span class="number">¥{{ formatAmount(statistics.totalReimbursement) }}</span>
-          </div>
-          <div class="statistics-compare">
-            较上月
-            <span :class="statistics.reimbursementGrowth >= 0 ? 'up' : 'down'">
-              {{ Math.abs(statistics.reimbursementGrowth).toFixed(2) }}%
-              <el-icon>
-                <component :is="statistics.reimbursementGrowth >= 0 ? 'ArrowUp' : 'ArrowDown'" />
-              </el-icon>
-            </span>
+            <span class="number">¥{{ formatAmount(statistics.drugAmount) }}</span>
           </div>
         </el-card>
       </el-col>
 
-      <el-col :span="6">
+      <el-col :span="8">
         <el-card shadow="hover" class="statistics-card">
           <template #header>
             <div class="card-header">
-              <span>报销比例</span>
-              <el-tag size="small" type="warning">平均</el-tag>
+              <span>诊疗费用</span>
+              <el-tag size="small" type="warning">累计</el-tag>
             </div>
           </template>
           <div class="statistics-value">
-            <span class="number">{{ statistics.averageRatio.toFixed(2) }}%</span>
-          </div>
-          <div class="statistics-compare">
-            较上月
-            <span :class="statistics.ratioGrowth >= 0 ? 'up' : 'down'">
-              {{ Math.abs(statistics.ratioGrowth).toFixed(2) }}%
-              <el-icon>
-                <component :is="statistics.ratioGrowth >= 0 ? 'ArrowUp' : 'ArrowDown'" />
-              </el-icon>
-            </span>
-          </div>
-        </el-card>
-      </el-col>
-
-      <el-col :span="6">
-        <el-card shadow="hover" class="statistics-card">
-          <template #header>
-            <div class="card-header">
-              <span>申请人数</span>
-              <el-tag size="small" type="danger">累计</el-tag>
-            </div>
-          </template>
-          <div class="statistics-value">
-            <span class="number">{{ statistics.totalPeople }}</span>
-          </div>
-          <div class="statistics-compare">
-            较上月
-            <span :class="statistics.peopleGrowth >= 0 ? 'up' : 'down'">
-              {{ Math.abs(statistics.peopleGrowth).toFixed(2) }}%
-              <el-icon>
-                <component :is="statistics.peopleGrowth >= 0 ? 'ArrowUp' : 'ArrowDown'" />
-              </el-icon>
-            </span>
+            <span class="number">¥{{ formatAmount(statistics.treatmentAmount) }}</span>
           </div>
         </el-card>
       </el-col>
@@ -146,7 +114,7 @@
         <el-card class="chart-card">
           <template #header>
             <div class="card-header">
-              <span>报销金额趋势</span>
+              <span>费用趋势</span>
             </div>
           </template>
           <div ref="lineChartRef" class="chart"></div>
@@ -159,10 +127,12 @@
       <template #header>
         <div class="card-header">
           <span>费用明细</span>
+          <el-button-group>
           <el-button type="primary" @click="handleExport">
             <el-icon><Download /></el-icon>
             导出Excel
           </el-button>
+          </el-button-group>
         </div>
       </template>
 
@@ -184,20 +154,9 @@
             {{ formatDate(row.expenseDate) }}
           </template>
         </el-table-column>
-        <el-table-column prop="patientName" label="患者姓名" width="120" />
         <el-table-column prop="amount" label="费用金额" width="120">
           <template #default="{ row }">
             ¥{{ formatAmount(row.amount) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="reimbursementAmount" label="报销金额" width="120">
-          <template #default="{ row }">
-            ¥{{ formatAmount(row.reimbursementAmount) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="ratio" label="报销比例" width="120">
-          <template #default="{ row }">
-            {{ row.ratio }}%
           </template>
         </el-table-column>
         <el-table-column prop="description" label="说明" min-width="200" show-overflow-tooltip />
@@ -220,51 +179,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import type { FormInstance } from 'element-plus'
 import { ElMessage } from 'element-plus'
-import { request } from '@/utils/request'
+import { insuredPersonApi, expenseApi } from '@/api/insurance'
+import type { InsuredPerson, ExpenseDetail } from '@/types/insurance'
 import dayjs from 'dayjs'
 import * as echarts from 'echarts'
 
-// 接口定义
-interface Statistics {
-  totalAmount: number
-  totalReimbursement: number
-  averageRatio: number
-  totalPeople: number
-  amountGrowth: number
-  reimbursementGrowth: number
-  ratioGrowth: number
-  peopleGrowth: number
-}
-
-interface ExpenseDetail {
-  expenseType: number
-  expenseDate: string
-  patientName: string
-  amount: number
-  reimbursementAmount: number
-  ratio: number
-  description: string
-}
-
 // 搜索表单
 const searchForm = reactive({
+  personId: undefined as number | undefined,
+  expenseType: undefined as string | undefined,
   dateRange: [] as string[],
-  expenseType: undefined as number | undefined
+  startDate: undefined as string | undefined,
+  endDate: undefined as string | undefined
 })
 
+// 参保人选项
+const personLoading = ref(false)
+const personOptions = ref<InsuredPerson[]>([])
+
 // 统计数据
-const statistics = reactive<Statistics>({
+const statistics = reactive({
   totalAmount: 0,
-  totalReimbursement: 0,
-  averageRatio: 0,
-  totalPeople: 0,
-  amountGrowth: 0,
-  reimbursementGrowth: 0,
-  ratioGrowth: 0,
-  peopleGrowth: 0
+  drugAmount: 0,
+  treatmentAmount: 0
 })
 
 // 分页信息
@@ -284,32 +224,52 @@ const lineChartRef = ref<HTMLElement>()
 let pieChart: echarts.ECharts | null = null
 let lineChart: echarts.ECharts | null = null
 
-// 获取统计数据
-const fetchStatistics = async () => {
-  try {
-    const data = await request.get<Statistics>('/api/reimbursement/expense/statistics', {
-      startDate: searchForm.dateRange?.[0],
-      endDate: searchForm.dateRange?.[1],
-      expenseType: searchForm.expenseType
-    })
-    Object.assign(statistics, data)
-  } catch (error) {
-    console.error('获取统计数据失败:', error)
+// 搜索参保人
+const searchPerson = async (query: string) => {
+  if (query) {
+    personLoading.value = true
+    try {
+      const data = await insuredPersonApi.search({ personName: query })
+      personOptions.value = data
+    } catch (error) {
+      console.error('搜索参保人失败:', error)
+    } finally {
+      personLoading.value = false
+    }
+  } else {
+    personOptions.value = []
   }
 }
 
 // 获取费用明细
-const fetchExpenseDetails = async () => {
+const fetchExpenses = async () => {
+  if (!searchForm.personId) {
+    ElMessage.warning('请选择参保人')
+    return
+  }
+
   loading.value = true
   try {
-    const { list, total } = await request.get<{ list: ExpenseDetail[], total: number }>('/api/reimbursement/expense/details', {
-      ...searchForm,
-      ...pagination,
-      startDate: searchForm.dateRange?.[0],
-      endDate: searchForm.dateRange?.[1]
+    const res = await expenseApi.getExpenses({
+      personId: searchForm.personId,
+      expenseType: searchForm.expenseType,
+      startDate: searchForm.startDate,
+      endDate: searchForm.endDate
     })
-    tableData.value = list
-    pagination.total = total
+    tableData.value = res
+    pagination.total = res.length
+
+    // 更新统计数据
+    statistics.totalAmount = res.reduce((sum: number, item: ExpenseDetail) => sum + item.amount, 0)
+    statistics.drugAmount = res
+      .filter((item: ExpenseDetail) => item.expenseType === 'drug')
+      .reduce((sum: number, item: ExpenseDetail) => sum + item.amount, 0)
+    statistics.treatmentAmount = res
+      .filter((item: ExpenseDetail) => item.expenseType === 'treatment')
+      .reduce((sum: number, item: ExpenseDetail) => sum + item.amount, 0)
+
+    // 更新图表
+    updateCharts()
   } catch (error) {
     console.error('获取费用明细失败:', error)
   } finally {
@@ -320,6 +280,16 @@ const fetchExpenseDetails = async () => {
 // 初始化饼图
 const initPieChart = () => {
   if (!pieChartRef.value) return
+
+  // 确保元素有高度和宽度
+  if (pieChartRef.value.clientHeight === 0 || pieChartRef.value.clientWidth === 0) {
+    setTimeout(initPieChart, 100)
+    return
+  }
+
+  if (pieChart) {
+    pieChart.dispose()
+  }
 
   pieChart = echarts.init(pieChartRef.value)
   const option = {
@@ -336,12 +306,7 @@ const initPieChart = () => {
         name: '费用类型',
         type: 'pie',
         radius: '50%',
-        data: [
-          { value: 0, name: '门诊费用' },
-          { value: 0, name: '住院费用' },
-          { value: 0, name: '药品费用' },
-          { value: 0, name: '检查费用' }
-        ],
+        data: [],
         emphasis: {
           itemStyle: {
             shadowBlur: 10,
@@ -359,13 +324,23 @@ const initPieChart = () => {
 const initLineChart = () => {
   if (!lineChartRef.value) return
 
+  // 确保元素有高度和宽度
+  if (lineChartRef.value.clientHeight === 0 || lineChartRef.value.clientWidth === 0) {
+    setTimeout(initLineChart, 100)
+    return
+  }
+
+  if (lineChart) {
+    lineChart.dispose()
+  }
+
   lineChart = echarts.init(lineChartRef.value)
   const option = {
     tooltip: {
       trigger: 'axis'
     },
     legend: {
-      data: ['申请金额', '报销金额']
+      data: ['费用金额']
     },
     xAxis: {
       type: 'category',
@@ -376,12 +351,7 @@ const initLineChart = () => {
     },
     series: [
       {
-        name: '申请金额',
-        type: 'line',
-        data: []
-      },
-      {
-        name: '报销金额',
+        name: '费用金额',
         type: 'line',
         data: []
       }
@@ -392,32 +362,35 @@ const initLineChart = () => {
 
 // 更新图表数据
 const updateCharts = async () => {
+  if (!searchForm.personId) return
+
   try {
-    // 获取饼图数据
-    const pieData = await request.get('/api/reimbursement/expense/type-distribution')
+    // 更新饼图
+    const typeData = await expenseApi.getExpenseTypeChart(
+      searchForm.personId,
+      searchForm.startDate,
+      searchForm.endDate
+    )
     if (pieChart) {
       pieChart.setOption({
         series: [{
-          data: pieData
+          data: typeData.map(item => ({
+            name: expenseTypeText(item.type),
+            value: item.amount
+          }))
         }]
       })
     }
 
-    // 获取折线图数据
-    const lineData = await request.get('/api/reimbursement/expense/trend')
+    // 更新折线图
     if (lineChart) {
       lineChart.setOption({
         xAxis: {
-          data: lineData.dates
+          data: tableData.value.map(item => formatDate(item.expenseDate))
         },
-        series: [
-          {
-            data: lineData.amounts
-          },
-          {
-            data: lineData.reimbursements
-          }
-        ]
+        series: [{
+          data: tableData.value.map(item => item.amount)
+        }]
       })
     }
   } catch (error) {
@@ -425,33 +398,47 @@ const updateCharts = async () => {
   }
 }
 
+// 处理日期范围变化
+const handleDateRangeChange = (val: [string, string] | null) => {
+  if (val) {
+    searchForm.startDate = val[0]
+    searchForm.endDate = val[1]
+  } else {
+    searchForm.startDate = undefined
+    searchForm.endDate = undefined
+  }
+}
+
 // 处理查询
 const handleSearch = () => {
   pagination.pageNum = 1
-  Promise.all([
-    fetchStatistics(),
-    fetchExpenseDetails(),
-    updateCharts()
-  ])
+  fetchExpenses()
 }
 
 // 重置查询
 const resetSearch = () => {
   Object.assign(searchForm, {
+    personId: undefined,
+    expenseType: undefined,
     dateRange: [],
-    expenseType: undefined
+    startDate: undefined,
+    endDate: undefined
   })
-  handleSearch()
+  personOptions.value = []
 }
 
 // 处理导出
 const handleExport = async () => {
+  if (!searchForm.personId) {
+    ElMessage.warning('请选择参保人')
+    return
+  }
+
   try {
-    const blob = await request.get('/api/reimbursement/expense/export', {
-      ...searchForm,
-      startDate: searchForm.dateRange?.[0],
-      endDate: searchForm.dateRange?.[1],
-      responseType: 'blob'
+    const blob = await expenseApi.exportExpenses(searchForm.personId, {
+      expenseType: searchForm.expenseType,
+      startDate: searchForm.startDate,
+      endDate: searchForm.endDate
     })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -468,12 +455,12 @@ const handleExport = async () => {
 // 处理分页变化
 const handleSizeChange = (val: number) => {
   pagination.pageSize = val
-  fetchExpenseDetails()
+  fetchExpenses()
 }
 
 const handleCurrentChange = (val: number) => {
   pagination.pageNum = val
-  fetchExpenseDetails()
+  fetchExpenses()
 }
 
 // 格式化金额
@@ -487,16 +474,14 @@ const formatDate = (date: string) => {
 }
 
 // 费用类型文本
-const expenseTypeText = (type: number) => {
+const expenseTypeText = (type: string) => {
   switch (type) {
-    case 1:
-      return '门诊费用'
-    case 2:
-      return '住院费用'
-    case 3:
+    case 'drug':
       return '药品费用'
-    case 4:
-      return '检查费用'
+    case 'treatment':
+      return '诊疗费用'
+    case 'service':
+      return '医疗服务费用'
     default:
       return '未知'
   }
@@ -509,9 +494,11 @@ const handleResize = () => {
 }
 
 onMounted(() => {
-  initPieChart()
-  initLineChart()
-  handleSearch()
+  // 使用 nextTick 确保 DOM 已经渲染
+  nextTick(() => {
+    initPieChart()
+    initLineChart()
+  })
   window.addEventListener('resize', handleResize)
 })
 
@@ -522,7 +509,7 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .expense-container {
   padding: 20px;
 }
@@ -536,7 +523,7 @@ onUnmounted(() => {
 }
 
 .statistics-card {
-  height: 180px;
+  height: 160px;
 }
 
 .statistics-value {
@@ -550,26 +537,15 @@ onUnmounted(() => {
   color: #303133;
 }
 
-.statistics-compare {
-  text-align: center;
-  font-size: 14px;
-  color: #909399;
-}
-
-.statistics-compare .up {
-  color: #67c23a;
-}
-
-.statistics-compare .down {
-  color: #f56c6c;
-}
-
 .chart-row {
   margin-bottom: 20px;
 }
 
 .chart-card {
   height: 400px;
+  .chart {
+    height: 320px;
+  }
 }
 
 .chart {

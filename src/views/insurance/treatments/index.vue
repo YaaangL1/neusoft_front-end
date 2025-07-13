@@ -3,17 +3,17 @@
       <!-- 搜索栏 -->
       <el-card class="search-card">
         <el-form :inline="true" :model="searchForm" ref="searchFormRef">
-          <el-form-item label="项目名称" prop="projectName">
+        <el-form-item label="项目名称" prop="treatmentName">
             <el-input
-              v-model="searchForm.projectName"
+            v-model="searchForm.treatmentName"
               placeholder="请输入项目名称"
               clearable
               @keyup.enter="handleSearch"
             />
           </el-form-item>
-          <el-form-item label="项目编码" prop="projectCode">
+        <el-form-item label="项目编码" prop="medicalNumber">
             <el-input
-              v-model="searchForm.projectCode"
+            v-model="searchForm.medicalNumber"
               placeholder="请输入项目编码"
               clearable
               @keyup.enter="handleSearch"
@@ -53,24 +53,14 @@
           style="width: 100%"
         >
           <el-table-column type="index" label="序号" width="60" align="center" />
-          <el-table-column prop="projectName" label="项目名称" min-width="150" show-overflow-tooltip />
-          <el-table-column prop="projectCode" label="项目编码" width="120" />
-          <el-table-column prop="nationalCode" label="国家编码" width="120" show-overflow-tooltip />
-          <el-table-column prop="financialCategory" label="财务分类" width="120" show-overflow-tooltip />
-          <el-table-column prop="unit" label="单位" width="80" align="center" />
-          <el-table-column prop="price" label="单价" width="100" align="right">
+        <el-table-column prop="medicalName" label="项目名称" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="medicalNumber" label="项目编码" width="120" />
+        <el-table-column prop="countryNumber" label="国家编码" width="120" show-overflow-tooltip />
+        <el-table-column prop="medicalType" label="项目类别" width="120" show-overflow-tooltip />
+        <el-table-column prop="medicalUnit" label="单位" width="80" align="center" />
+        <el-table-column prop="medicalPrice" label="单价" width="100" align="right">
             <template #default="{ row }">
-              {{ formatPrice(row.price) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="status" label="状态" width="80" align="center">
-            <template #default="{ row }">
-              <el-switch
-                v-model="row.status"
-                :active-value="1"
-                :inactive-value="0"
-                @change="handleStatusChange(row)"
-              />
+            {{ formatPrice(row.medicalPrice) }}
             </template>
           </el-table-column>
           <el-table-column label="操作" width="150" align="center" fixed="right">
@@ -114,33 +104,47 @@
           :rules="rules"
           label-width="100px"
         >
-          <el-form-item label="项目名称" prop="projectName">
-            <el-input v-model="form.projectName" placeholder="请输入项目名称" />
+        <el-form-item label="项目名称" prop="medicalName">
+          <el-input v-model="form.medicalName" placeholder="请输入项目名称" />
           </el-form-item>
-          <el-form-item label="项目编码" prop="projectCode">
-            <el-input v-model="form.projectCode" placeholder="请输入项目编码" />
+        <el-form-item label="项目编码" prop="medicalNumber">
+          <el-input v-model="form.medicalNumber" placeholder="请输入项目编码" />
           </el-form-item>
-          <el-form-item label="国家编码" prop="nationalCode">
-            <el-input v-model="form.nationalCode" placeholder="请输入国家编码" />
+        <el-form-item label="国家编码" prop="countryNumber">
+          <el-input v-model="form.countryNumber" placeholder="请输入国家编码" />
           </el-form-item>
-          <el-form-item label="财务分类" prop="financialCategory">
-            <el-input v-model="form.financialCategory" placeholder="请输入财务分类" />
+        <el-form-item label="项目类别" prop="medicalType">
+          <el-input v-model="form.medicalType" placeholder="请输入项目类别" />
           </el-form-item>
-          <el-form-item label="单位" prop="unit">
-            <el-input v-model="form.unit" placeholder="请输入单位" />
+        <el-form-item label="单位" prop="medicalUnit">
+          <el-input v-model="form.medicalUnit" placeholder="请输入单位" />
           </el-form-item>
-          <el-form-item label="单价" prop="price">
+        <el-form-item label="单价" prop="medicalPrice">
             <el-input-number
-              v-model="form.price"
+            v-model="form.medicalPrice"
               :precision="2"
               :step="0.1"
               :min="0"
               style="width: 100%"
             />
           </el-form-item>
-          <el-form-item label="备注" prop="remarks">
+        <el-form-item label="项目说明" prop="medicalInfo">
+          <el-input
+            v-model="form.medicalInfo"
+            type="textarea"
+            placeholder="请输入项目说明"
+          />
+        </el-form-item>
+        <el-form-item label="除外内容" prop="medicalExclude">
+          <el-input
+            v-model="form.medicalExclude"
+            type="textarea"
+            placeholder="请输入除外内容"
+          />
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
             <el-input
-              v-model="form.remarks"
+            v-model="form.remark"
               type="textarea"
               placeholder="请输入备注信息"
             />
@@ -162,13 +166,13 @@
   import { ref, reactive } from 'vue'
   import type { FormInstance, FormRules } from 'element-plus'
   import { ElMessage, ElMessageBox } from 'element-plus'
-  import { request } from '@/utils/request'
-  import type { Treatment } from '@/types/insurance'
+  import { treatmentApi } from '@/api/insurance'
+  import type { TreatmentVO } from '@/types/insurance'
   
   // 搜索表单
   const searchForm = reactive({
-    projectName: '',
-    projectCode: ''
+    treatmentName: '',
+    medicalNumber: ''
   })
   
   // 分页信息
@@ -180,35 +184,37 @@
   
   // 表格数据
   const loading = ref(false)
-  const tableData = ref<Treatment[]>([])
+  const tableData = ref<TreatmentVO[]>([])
   
   // 表单数据
   const dialogVisible = ref(false)
   const dialogType = ref<'add' | 'edit'>('add')
   const formRef = ref<FormInstance>()
-  const form = reactive<Partial<Treatment>>({
-    projectName: '',
-    projectCode: '',
-    nationalCode: '',
-    financialCategory: '',
-    unit: '',
-    price: 0,
-    remarks: ''
+  const form = reactive<Partial<TreatmentVO>>({
+    medicalName: '',
+    medicalNumber: '',
+    countryNumber: '',
+    medicalType: '',
+    medicalUnit: '',
+    medicalPrice: 0,
+    medicalInfo: '',
+    medicalExclude: '',
+    remark: ''
   })
   
   // 表单校验规则
   const rules: FormRules = {
-    projectName: [
+    medicalName: [
       { required: true, message: '请输入项目名称', trigger: 'blur' },
       { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
     ],
-    projectCode: [
+    medicalNumber: [
       { required: true, message: '请输入项目编码', trigger: 'blur' }
     ],
-    unit: [
+    medicalUnit: [
       { required: true, message: '请输入单位', trigger: 'blur' }
     ],
-    price: [
+    medicalPrice: [
       { required: true, message: '请输入单价', trigger: 'blur' }
     ]
   }
@@ -217,14 +223,26 @@
   const fetchTreatments = async () => {
     loading.value = true
     try {
-      const { list, total } = await request.get<{ list: Treatment[], total: number }>('/api/insurance/treatments', {
-        ...searchForm,
-        ...pagination
-      })
-      tableData.value = list
-      pagination.total = total
-    } catch (error) {
+      const params = {
+        pageNum: pagination.pageNum,
+        pageSize: pagination.pageSize,
+        treatmentName: searchForm.treatmentName,
+        medicalNumber: searchForm.medicalNumber
+      }
+      console.log('请求诊疗项目列表，参数:', params)
+      const res = await treatmentApi.getPage(params)
+      console.log('获取诊疗项目列表响应:', res)
+      
+      if (res && res.data) {
+        tableData.value = res.data.list || []
+        pagination.total = res.data.total || 0
+      } else {
+        console.error('响应数据格式错误:', res)
+        ElMessage.error('获取诊疗项目列表失败：响应数据格式错误')
+      }
+    } catch (error: any) {
       console.error('获取诊疗项目列表失败:', error)
+      ElMessage.error(error.message || '获取诊疗项目列表失败，请检查网络连接')
     } finally {
       loading.value = false
     }
@@ -239,8 +257,8 @@
   // 重置查询
   const resetSearch = () => {
     Object.assign(searchForm, {
-      projectName: '',
-      projectCode: ''
+      treatmentName: '',
+      medicalNumber: ''
     })
     handleSearch()
   }
@@ -252,16 +270,16 @@
   }
   
   // 处理编辑
-  const handleEdit = (row: Treatment) => {
+  const handleEdit = (row: TreatmentVO) => {
     dialogType.value = 'edit'
     Object.assign(form, row)
     dialogVisible.value = true
   }
   
   // 处理删除
-  const handleDelete = (row: Treatment) => {
+  const handleDelete = (row: TreatmentVO) => {
     ElMessageBox.confirm(
-      `确认删除诊疗项目"${row.projectName}"吗？`,
+      `确认删除诊疗项目"${row.medicalName}"吗？`,
       '警告',
       {
         confirmButtonText: '确定',
@@ -270,26 +288,13 @@
       }
     ).then(async () => {
       try {
-        await request.delete(`/api/insurance/treatments/${row.id}`)
+        await treatmentApi.delete([row.id])
         ElMessage.success('删除成功')
         fetchTreatments()
       } catch (error) {
         console.error('删除失败:', error)
       }
     })
-  }
-  
-  // 处理状态变更
-  const handleStatusChange = async (row: Treatment) => {
-    try {
-      await request.put(`/api/insurance/treatments/${row.id}/status`, {
-        status: row.status
-      })
-      ElMessage.success('状态更新成功')
-    } catch (error) {
-      console.error('状态更新失败:', error)
-      row.status = row.status === 1 ? 0 : 1
-    }
   }
   
   // 处理表单提交
@@ -300,10 +305,10 @@
       if (valid) {
         try {
           if (dialogType.value === 'add') {
-            await request.post('/api/insurance/treatments', form)
+            await treatmentApi.add(form)
             ElMessage.success('新增成功')
           } else {
-            await request.put(`/api/insurance/treatments/${form.id}`, form)
+            await treatmentApi.update(form.id!, form)
             ElMessage.success('更新成功')
           }
           dialogVisible.value = false
@@ -321,13 +326,15 @@
       formRef.value.resetFields()
     }
     Object.assign(form, {
-      projectName: '',
-      projectCode: '',
-      nationalCode: '',
-      financialCategory: '',
-      unit: '',
-      price: 0,
-      remarks: ''
+      medicalName: '',
+      medicalNumber: '',
+      countryNumber: '',
+      medicalType: '',
+      medicalUnit: '',
+      medicalPrice: 0,
+      medicalInfo: '',
+      medicalExclude: '',
+      remark: ''
     })
   }
   

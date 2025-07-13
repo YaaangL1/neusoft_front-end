@@ -11,10 +11,10 @@
             @keyup.enter="handleSearch"
           />
         </el-form-item>
-        <el-form-item label="就诊号" prop="visitNumber">
+        <el-form-item label="服务名称" prop="serviceName">
           <el-input
-            v-model="searchForm.visitNumber"
-            placeholder="请输入就诊号"
+            v-model="searchForm.serviceName"
+            placeholder="请输入服务名称"
             clearable
             @keyup.enter="handleSearch"
           />
@@ -64,23 +64,19 @@
       >
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="patientName" label="患者姓名" width="120" />
-        <el-table-column prop="visitNumber" label="就诊号" width="120" />
-        <el-table-column prop="serviceDate" label="服务日期" width="120">
+        <el-table-column prop="medicalName" label="服务名称" width="150" />
+        <el-table-column prop="medicalNumber" label="服务编码" width="120" />
+        <el-table-column prop="orderTime" label="开立时间" width="150">
           <template #default="{ row }">
-            {{ formatDate(row.serviceDate) }}
+            {{ formatDate(row.orderTime) }}
           </template>
         </el-table-column>
-        <el-table-column prop="serviceType" label="服务类型" width="120">
-          <template #default="{ row }">
-            <el-tag :type="serviceTypeTag(row.serviceType)">
-              {{ serviceTypeText(row.serviceType) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="serviceName" label="服务名称" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="doctorName" label="医生姓名" width="120" />
-        <el-table-column prop="department" label="科室" width="120" />
-        <el-table-column prop="serviceResult" label="服务结果" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="doctorOrder" label="医嘱内容" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="useMethod" label="使用方法" width="120" />
+        <el-table-column prop="medicalPrice" label="单价" width="100" />
+        <el-table-column prop="medicalUnit" label="单位" width="80" />
+        <el-table-column prop="medicalInfo" label="医疗服务信息" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="medicalExclude" label="排除项目" min-width="150" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="serviceStatusType(row.status)">
@@ -140,82 +136,91 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="就诊号" prop="visitNumber">
-              <el-input v-model="form.visitNumber" placeholder="请输入就诊号" />
+            <el-form-item label="医疗服务名称" prop="medicalName">
+              <el-input v-model="form.medicalName" placeholder="请输入医疗服务名称" />
             </el-form-item>
           </el-col>
         </el-row>
 
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="服务日期" prop="serviceDate">
+            <el-form-item label="医疗服务编码" prop="medicalNumber">
+              <el-input v-model="form.medicalNumber" placeholder="请输入医疗服务编码" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="医疗服务类型" prop="medicalType">
+              <el-select v-model="form.medicalType" placeholder="请选择医疗服务类型" style="width: 100%">
+                <el-option label="检查" value="检查" />
+                <el-option label="化验" value="化验" />
+                <el-option label="治疗" value="治疗" />
+                <el-option label="手术" value="手术" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="开立时间" prop="orderTime">
               <el-date-picker
-                v-model="form.serviceDate"
-                type="date"
-                placeholder="请选择服务日期"
-                value-format="YYYY-MM-DD"
+                v-model="form.orderTime"
+                type="datetime"
+                placeholder="请选择开立时间"
+                value-format="YYYY-MM-DD HH:mm:ss"
                 style="width: 100%"
               />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="服务类型" prop="serviceType">
-              <el-select v-model="form.serviceType" placeholder="请选择服务类型" style="width: 100%">
-                <el-option label="检查" :value="1" />
-                <el-option label="化验" :value="2" />
-                <el-option label="治疗" :value="3" />
-                <el-option label="手术" :value="4" />
-              </el-select>
+            <el-form-item label="医嘱内容" prop="doctorOrder">
+              <el-input v-model="form.doctorOrder" type="textarea" rows="3" placeholder="请输入医嘱内容" />
             </el-form-item>
           </el-col>
         </el-row>
 
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="科室" prop="department">
-              <el-select v-model="form.department" placeholder="请选择科室" style="width: 100%">
-                <el-option label="内科" value="内科" />
-                <el-option label="外科" value="外科" />
-                <el-option label="儿科" value="儿科" />
-                <el-option label="妇产科" value="妇产科" />
-                <el-option label="眼科" value="眼科" />
-                <el-option label="耳鼻喉科" value="耳鼻喉科" />
-              </el-select>
+            <el-form-item label="使用方法" prop="useMethod">
+              <el-input v-model="form.useMethod" placeholder="请输入使用方法" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="服务名称" prop="serviceName">
-              <el-input v-model="form.serviceName" placeholder="请输入服务名称" />
+            <el-form-item label="单价" prop="medicalPrice">
+              <el-input v-model="form.medicalPrice" placeholder="请输入单价" />
             </el-form-item>
           </el-col>
         </el-row>
 
-        <el-form-item label="服务内容" prop="serviceContent">
-          <el-input
-            v-model="form.serviceContent"
-            type="textarea"
-            rows="3"
-            placeholder="请输入服务内容"
-          />
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="单位" prop="medicalUnit">
+              <el-input v-model="form.medicalUnit" placeholder="请输入单位" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="医疗服务信息" prop="medicalInfo">
+              <el-input v-model="form.medicalInfo" type="textarea" rows="3" placeholder="请输入医疗服务信息" />
         </el-form-item>
+          </el-col>
+        </el-row>
 
-        <el-form-item label="服务结果" prop="serviceResult">
-          <el-input
-            v-model="form.serviceResult"
-            type="textarea"
-            rows="3"
-            placeholder="请输入服务结果"
-          />
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="排除项目" prop="medicalExclude">
+              <el-input v-model="form.medicalExclude" type="textarea" rows="3" placeholder="请输入排除项目" />
         </el-form-item>
-
-        <el-form-item label="备注" prop="remarks">
-          <el-input
-            v-model="form.remarks"
-            type="textarea"
-            rows="3"
-            placeholder="请输入备注"
-          />
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="状态" prop="status">
+              <el-select v-model="form.status" placeholder="请选择状态" style="width: 100%">
+                <el-option label="正常执行" value="1" />
+                <el-option label="已作废" value="0" />
+                <el-option label="已停止" value="2" />
+              </el-select>
         </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
@@ -233,31 +238,14 @@
 import { ref, reactive } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { request } from '@/utils/request'
+import { serviceApi } from '@/api/doctor'
+import type { PatientMedicalServiceVO } from '@/types/doctor'
 import dayjs from 'dayjs'
-
-// 接口定义
-interface ServiceRecord {
-  id: number
-  patientName: string
-  visitNumber: string
-  serviceDate: string
-  serviceType: number
-  serviceName: string
-  serviceContent: string
-  serviceResult: string
-  doctorName: string
-  department: string
-  status: number
-  remarks?: string
-  createTime: string
-  updateTime: string
-}
 
 // 搜索表单
 const searchForm = reactive({
   patientName: '',
-  visitNumber: '',
+  serviceName: '',
   serviceDate: [] as string[]
 })
 
@@ -270,22 +258,27 @@ const pagination = reactive({
 
 // 表格数据
 const loading = ref(false)
-const tableData = ref<ServiceRecord[]>([])
+const tableData = ref<PatientMedicalServiceVO[]>([])
 
 // 表单数据
 const dialogVisible = ref(false)
 const dialogType = ref<'add' | 'edit' | 'view'>('add')
 const formRef = ref<FormInstance>()
-const form = reactive<Partial<ServiceRecord>>({
+const form = reactive<Partial<PatientMedicalServiceVO>>({
   patientName: '',
-  visitNumber: '',
-  serviceDate: '',
-  serviceType: undefined,
-  serviceName: '',
-  serviceContent: '',
-  serviceResult: '',
-  department: '',
-  remarks: ''
+  patientId: undefined,
+  medicalId: undefined,
+  medicalName: '',
+  medicalNumber: '',
+  medicalType: '',
+  medicalUnit: '',
+  medicalPrice: undefined,
+  medicalInfo: '',
+  medicalExclude: '',
+  doctorOrder: '',
+  useMethod: '',
+  orderTime: '',
+  status: 1
 })
 
 // 表单校验规则
@@ -294,23 +287,20 @@ const rules: FormRules = {
     { required: true, message: '请输入患者姓名', trigger: 'blur' },
     { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
   ],
-  visitNumber: [
-    { required: true, message: '请输入就诊号', trigger: 'blur' }
+  medicalName: [
+    { required: true, message: '请输入医疗服务名称', trigger: 'blur' }
   ],
-  serviceDate: [
-    { required: true, message: '请选择服务日期', trigger: 'change' }
+  medicalNumber: [
+    { required: true, message: '请输入医疗服务编码', trigger: 'blur' }
   ],
-  serviceType: [
-    { required: true, message: '请选择服务类型', trigger: 'change' }
+  medicalType: [
+    { required: true, message: '请选择医疗服务类型', trigger: 'change' }
   ],
-  department: [
-    { required: true, message: '请选择科室', trigger: 'change' }
+  orderTime: [
+    { required: true, message: '请选择开立时间', trigger: 'change' }
   ],
-  serviceName: [
-    { required: true, message: '请输入服务名称', trigger: 'blur' }
-  ],
-  serviceContent: [
-    { required: true, message: '请输入服务内容', trigger: 'blur' }
+  doctorOrder: [
+    { required: true, message: '请输入医嘱内容', trigger: 'blur' }
   ]
 }
 
@@ -318,14 +308,14 @@ const rules: FormRules = {
 const fetchServiceRecords = async () => {
   loading.value = true
   try {
-    const { list, total } = await request.get<{ list: ServiceRecord[], total: number }>('/api/doctor/service', {
-      ...searchForm,
+    const { data } = await serviceApi.getPage({
       ...pagination,
+      ...searchForm,
       startDate: searchForm.serviceDate?.[0],
       endDate: searchForm.serviceDate?.[1]
     })
-    tableData.value = list
-    pagination.total = total
+    tableData.value = data.list
+    pagination.total = data.total
   } catch (error) {
     console.error('获取医疗服务记录列表失败:', error)
   } finally {
@@ -343,7 +333,7 @@ const handleSearch = () => {
 const resetSearch = () => {
   Object.assign(searchForm, {
     patientName: '',
-    visitNumber: '',
+    serviceName: '',
     serviceDate: []
   })
   handleSearch()
@@ -356,21 +346,31 @@ const handleAdd = () => {
 }
 
 // 处理编辑
-const handleEdit = (row: ServiceRecord) => {
+const handleEdit = async (row: PatientMedicalServiceVO) => {
   dialogType.value = 'edit'
-  Object.assign(form, row)
+  try {
+    const { data } = await serviceApi.getById(row.id!)
+    Object.assign(form, data)
   dialogVisible.value = true
+  } catch (error) {
+    console.error('获取医疗服务记录详情失败:', error)
+  }
 }
 
 // 处理查看
-const handleView = (row: ServiceRecord) => {
+const handleView = async (row: PatientMedicalServiceVO) => {
   dialogType.value = 'view'
-  Object.assign(form, row)
+  try {
+    const { data } = await serviceApi.getById(row.id!)
+    Object.assign(form, data)
   dialogVisible.value = true
+  } catch (error) {
+    console.error('获取医疗服务记录详情失败:', error)
+  }
 }
 
 // 处理删除
-const handleDelete = (row: ServiceRecord) => {
+const handleDelete = (row: PatientMedicalServiceVO) => {
   ElMessageBox.confirm(
     `确认删除患者"${row.patientName}"的医疗服务记录吗？`,
     '警告',
@@ -381,7 +381,7 @@ const handleDelete = (row: ServiceRecord) => {
     }
   ).then(async () => {
     try {
-      await request.delete(`/api/doctor/service/${row.id}`)
+      await serviceApi.delete(row.id!)
       ElMessage.success('删除成功')
       fetchServiceRecords()
     } catch (error) {
@@ -398,10 +398,10 @@ const handleSubmit = async () => {
     if (valid) {
       try {
         if (dialogType.value === 'add') {
-          await request.post('/api/doctor/service', form)
+          await serviceApi.add(form)
           ElMessage.success('新增成功')
         } else {
-          await request.put(`/api/doctor/service/${form.id}`, form)
+          await serviceApi.update(form.id!, form)
           ElMessage.success('更新成功')
         }
         dialogVisible.value = false
@@ -420,14 +420,19 @@ const resetForm = () => {
   }
   Object.assign(form, {
     patientName: '',
-    visitNumber: '',
-    serviceDate: '',
-    serviceType: undefined,
-    serviceName: '',
-    serviceContent: '',
-    serviceResult: '',
-    department: '',
-    remarks: ''
+    patientId: undefined,
+    medicalId: undefined,
+    medicalName: '',
+    medicalNumber: '',
+    medicalType: '',
+    medicalUnit: '',
+    medicalPrice: undefined,
+    medicalInfo: '',
+    medicalExclude: '',
+    doctorOrder: '',
+    useMethod: '',
+    orderTime: '',
+    status: 1
   })
 }
 
@@ -444,49 +449,18 @@ const handleCurrentChange = (val: number) => {
 
 // 格式化日期
 const formatDate = (date: string) => {
-  return dayjs(date).format('YYYY-MM-DD')
+  return dayjs(date).format('YYYY-MM-DD HH:mm:ss')
 }
 
-// 服务类型
-const serviceTypeTag = (type: number) => {
-  switch (type) {
-    case 1:
-      return ''
-    case 2:
-      return 'warning'
-    case 3:
-      return 'success'
-    case 4:
-      return 'danger'
-    default:
-      return 'info'
-  }
-}
-
-const serviceTypeText = (type: number) => {
-  switch (type) {
-    case 1:
-      return '检查'
-    case 2:
-      return '化验'
-    case 3:
-      return '治疗'
-    case 4:
-      return '手术'
-    default:
-      return '未知'
-  }
-}
-
-// 服务状态
+// 医疗服务状态
 const serviceStatusType = (status: number) => {
   switch (status) {
     case 1:
       return 'success'
+    case 0:
+      return 'danger'
     case 2:
       return 'warning'
-    case 3:
-      return 'danger'
     default:
       return 'info'
   }
@@ -495,11 +469,11 @@ const serviceStatusType = (status: number) => {
 const serviceStatusText = (status: number) => {
   switch (status) {
     case 1:
-      return '已完成'
+      return '正常执行'
+    case 0:
+      return '已作废'
     case 2:
-      return '进行中'
-    case 3:
-      return '已取消'
+      return '已停止'
     default:
       return '未知'
   }
