@@ -135,26 +135,26 @@
         label-width="100px"
         :disabled="dialogType === 'view'"
       >
-        <el-form-item label="患者姓名" prop="patientName">
-          <el-input v-model="form.patientName" placeholder="请输入患者姓名" />
-        </el-form-item>
+            <el-form-item label="患者姓名" prop="patientName">
+              <el-input v-model="form.patientName" placeholder="请输入患者姓名" />
+            </el-form-item>
         <el-form-item label="药品" prop="drugId">
-          <el-select
+                <el-select
             v-model="form.drugId"
-            filterable
-            remote
-            :remote-method="searchDrugs"
-            placeholder="请选择药品"
-            style="width: 100%"
+                  filterable
+                  remote
+                  :remote-method="searchDrugs"
+                  placeholder="请选择药品"
+                  style="width: 100%"
             @change="handleDrugChange"
-          >
-            <el-option
-              v-for="item in drugOptions"
-              :key="item.id"
+                >
+                  <el-option
+                    v-for="item in drugOptions"
+                    :key="item.id"
               :label="item.chinaName"
-              :value="item.id"
-            />
-          </el-select>
+                    :value="item.id"
+                  />
+                </el-select>
         </el-form-item>
         <el-form-item label="规格">
           <el-input v-model="form.specifications" disabled />
@@ -166,11 +166,11 @@
           <el-input v-model="form.useMethod" placeholder="请输入用法" />
         </el-form-item>
         <el-form-item label="频次" prop="orderNumber">
-          <el-input-number
+                <el-input-number
             v-model="form.orderNumber"
-            :min="0"
-            :precision="0"
-            style="width: 100%"
+                  :min="0"
+                  :precision="0"
+                  style="width: 100%"
             placeholder="请输入频次（次/天）"
           />
         </el-form-item>
@@ -292,7 +292,7 @@ const prescriptionDateRange = computed({
   set: (val: [string, string]) => {
     form.startTime = val[0]
     form.endTime = val[1]
-  }
+}
 })
 
 // 获取处方列表
@@ -344,8 +344,8 @@ const handleDrugChange = (drugId: number) => {
       specifications: drug.specifications,
       drugUnit: drug.drugUnit,
       drugPrice: drug.drugPrice
-    })
-  }
+  })
+}
 }
 
 // 处理查询
@@ -376,7 +376,7 @@ const handleEdit = async (row: PatientPrescriptionVO) => {
   try {
     const { data } = await prescriptionApi.getById(row.id!)
     Object.assign(form, data)
-    dialogVisible.value = true
+  dialogVisible.value = true
   } catch (error) {
     console.error('获取处方详情失败:', error)
   }
@@ -388,7 +388,7 @@ const handleView = async (row: PatientPrescriptionVO) => {
   try {
     const { data } = await prescriptionApi.getById(row.id!)
     Object.assign(form, data)
-    dialogVisible.value = true
+  dialogVisible.value = true
   } catch (error) {
     console.error('获取处方详情失败:', error)
   }

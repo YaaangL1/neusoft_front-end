@@ -95,19 +95,13 @@ export const routes: RouteRecordRaw[] = [
         path: 'person',
         name: 'Person',
         component: () => import('../views/reimbursement/person/index.vue'),
-        meta: { title: '个人报销管理' }
+        meta: { title: '参保人报销管理' }
       },
       {
         path: 'expense',
         name: 'Expense',
         component: () => import('../views/reimbursement/expense/index.vue'),
-        meta: { title: '费用统计' }
-      },
-      {
-        path: 'report',
-        name: 'Report',
-        component: () => import('../views/reimbursement/report/index.vue'),
-        meta: { title: '报表管理' }
+        meta: { title: '参保人费用详情报表' }
       }
     ]
   }

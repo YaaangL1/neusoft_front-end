@@ -201,7 +201,7 @@
           <el-col :span="12">
             <el-form-item label="医疗服务信息" prop="medicalInfo">
               <el-input v-model="form.medicalInfo" type="textarea" rows="3" placeholder="请输入医疗服务信息" />
-            </el-form-item>
+        </el-form-item>
           </el-col>
         </el-row>
 
@@ -209,7 +209,7 @@
           <el-col :span="12">
             <el-form-item label="排除项目" prop="medicalExclude">
               <el-input v-model="form.medicalExclude" type="textarea" rows="3" placeholder="请输入排除项目" />
-            </el-form-item>
+        </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="状态" prop="status">
@@ -218,7 +218,7 @@
                 <el-option label="已作废" value="0" />
                 <el-option label="已停止" value="2" />
               </el-select>
-            </el-form-item>
+        </el-form-item>
           </el-col>
         </el-row>
       </el-form>
@@ -351,7 +351,7 @@ const handleEdit = async (row: PatientMedicalServiceVO) => {
   try {
     const { data } = await serviceApi.getById(row.id!)
     Object.assign(form, data)
-    dialogVisible.value = true
+  dialogVisible.value = true
   } catch (error) {
     console.error('获取医疗服务记录详情失败:', error)
   }
@@ -363,7 +363,7 @@ const handleView = async (row: PatientMedicalServiceVO) => {
   try {
     const { data } = await serviceApi.getById(row.id!)
     Object.assign(form, data)
-    dialogVisible.value = true
+  dialogVisible.value = true
   } catch (error) {
     console.error('获取医疗服务记录详情失败:', error)
   }

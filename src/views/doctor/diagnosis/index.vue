@@ -149,12 +149,12 @@
           <el-col :span="12">
             <el-form-item label="疾病编码" prop="diseaseCode">
               <el-input v-model="form.diseaseCode" placeholder="请输入疾病编码" />
-            </el-form-item>
+        </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="ICD编码" prop="diseaseICD">
               <el-input v-model="form.diseaseICD" placeholder="请输入ICD编码" />
-            </el-form-item>
+        </el-form-item>
           </el-col>
         </el-row>
       </el-form>
@@ -298,9 +298,9 @@ const handleView = (row: PatientDiagnosisVO) => {
 // 删除诊断
 const handleDelete = (row: PatientDiagnosisVO) => {
   ElMessageBox.confirm('确认删除该诊断记录?', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
   }).then(async () => {
     try {
       await diagnosisApi.delete(row.id!)

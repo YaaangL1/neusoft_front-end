@@ -37,7 +37,7 @@
               <img :src="captchaUrl" @click="refreshCaptcha" alt="验证码" class="captcha-img" />
             </template>
           </el-input>
-        </el-form-item>
+          </el-form-item>
           <el-form-item>
             <el-button
               :loading="loading"
@@ -94,8 +94,8 @@ const refreshCaptcha = () => {
       await loginFormRef.value.validate()
     
     // 检查用户名是否存在
-    const { data: exists } = await authApi.checkUsername(loginForm.value.loginName)
-    if (!exists) {
+    const checkResult = await authApi.checkUsername(loginForm.value.loginName)
+    if (!checkResult.data) {
       ElMessage.error('用户名不存在')
       return
     }
@@ -153,5 +153,5 @@ const refreshCaptcha = () => {
   height: 32px;
   margin: -6px -15px;
   cursor: pointer;
-}
+  }
   </style>

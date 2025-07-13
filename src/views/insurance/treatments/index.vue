@@ -229,17 +229,20 @@
         treatmentName: searchForm.treatmentName,
         medicalNumber: searchForm.medicalNumber
       }
-      console.log('请求参数:', params)
+      console.log('请求诊疗项目列表，参数:', params)
       const res = await treatmentApi.getPage(params)
-      if (res.code === 200) {
-        tableData.value = res.data.list
-        pagination.total = res.data.total
+      console.log('获取诊疗项目列表响应:', res)
+      
+      if (res && res.data) {
+        tableData.value = res.data.list || []
+        pagination.total = res.data.total || 0
       } else {
-        ElMessage.error(res.message || '获取诊疗项目列表失败')
+        console.error('响应数据格式错误:', res)
+        ElMessage.error('获取诊疗项目列表失败：响应数据格式错误')
       }
     } catch (error: any) {
       console.error('获取诊疗项目列表失败:', error)
-      ElMessage.error(error.message || '获取诊疗项目列表失败')
+      ElMessage.error(error.message || '获取诊疗项目列表失败，请检查网络连接')
     } finally {
       loading.value = false
     }

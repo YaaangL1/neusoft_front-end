@@ -171,15 +171,25 @@
   const getTableData = async () => {
     loading.value = true
     try {
-      const { total: totalCount, list } = await facilityApi.getPage({
+      const params = {
         pageNum: pageNum.value,
         pageSize: pageSize.value,
-        ...searchForm
-      })
-      tableData.value = list
-      total.value = totalCount
-    } catch (error) {
+        facilityName: searchForm.projectName
+      }
+      console.log('请求医疗服务设施列表，参数:', params)
+      const res = await facilityApi.getPage(params)
+      console.log('获取医疗服务设施列表响应:', res)
+      
+      if (res && res.data) {
+        tableData.value = res.data.list || []
+        total.value = res.data.total || 0
+      } else {
+        console.error('响应数据格式错误:', res)
+        ElMessage.error('获取医疗服务设施列表失败：响应数据格式错误')
+      }
+    } catch (error: any) {
       console.error('获取医疗服务设施列表失败:', error)
+      ElMessage.error(error.message || '获取医疗服务设施列表失败，请检查网络连接')
     } finally {
       loading.value = false
     }

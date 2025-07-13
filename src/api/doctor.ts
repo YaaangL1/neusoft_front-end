@@ -1,6 +1,15 @@
-import { request } from '@/utils/request'
-import type { PageQuery, PageResult, Result } from '@/types'
-import type { PatientDiagnosisVO, PatientPrescriptionVO, PatientTreatmentVO, PatientMedicalServiceVO } from '@/types/doctor'
+import { request } from '../utils/request'
+import type { PageQuery, PageResult, Result } from '../types'
+import type { 
+  PatientDiagnosisVO, 
+  PatientPrescriptionVO, 
+  PatientTreatmentVO, 
+  PatientMedicalServiceVO
+} from '../types/doctor'
+import type {
+  ReimbursementCalculationVO,
+  ReimbursementRecord
+} from '../types/insurance'
 
 // 诊断管理API
 export const diagnosisApi = {
@@ -111,5 +120,46 @@ export const serviceApi = {
   // 删除
   delete(id: number) {
     return request.delete<Result<string>>(`/api/patient-medical-services/${id}`)
+  }
+} 
+
+// 报销管理API
+export const reimbursementApi = {
+  // 分页查询
+  getPage(params: PageQuery & { personName?: string }) {
+    return request.get<Result<PageResult<ReimbursementRecord>>>('/api/insured-persons/page', { params })
+  },
+  // 搜索参保人员
+  searchPerson(personName: string) {
+    return request.get<Result<ReimbursementRecord[]>>('/api/insured-persons/search', { 
+      params: { personName } 
+    })
+  },
+  // 费用报销计算
+  calculate(personId: number, params: { 
+    hospitalLevel: string,
+    peopleType?: string,
+    startDate?: string,
+    endDate?: string 
+  }) {
+    return request.get<Result<ReimbursementCalculationVO>>(`/api/insured-persons/${personId}/reimbursement-calculation`, { params })
+  },
+  // 执行费用报销
+  execute(personId: number, params: {
+    hospitalLevel: string,
+    approver: string,
+    peopleType?: string,
+    startDate?: string,
+    endDate?: string,
+    remark?: string
+  }) {
+    return request.post<Result<ReimbursementRecord>>(`/api/insured-persons/${personId}/reimbursement`, params)
+  },
+  // 查询报销历史
+  getHistory(personId: number, params?: {
+    startDate?: string,
+    endDate?: string
+  }) {
+    return request.get<Result<ReimbursementRecord[]>>(`/api/insured-persons/${personId}/reimbursement-report`, { params })
   }
 } 

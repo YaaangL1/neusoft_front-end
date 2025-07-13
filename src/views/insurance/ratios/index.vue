@@ -77,7 +77,7 @@
                 </el-button>
               </div>
             </template>
-
+  
             <el-table :data="treatmentRatios" border stripe>
               <el-table-column type="index" label="序号" width="60" align="center" />
               <el-table-column prop="hospitalLevel" label="医院等级" width="120">
@@ -260,7 +260,7 @@
   </template>
   
   <script setup lang="ts">
-  import { ref, reactive, onMounted } from 'vue'
+  import { ref, reactive, onMounted, watch } from 'vue'
   import type { FormInstance, FormRules } from 'element-plus'
   import { ElMessage, ElMessageBox } from 'element-plus'
   import { Plus } from '@element-plus/icons-vue'
@@ -367,36 +367,64 @@
   const fetchDrugRatios = async () => {
     try {
       const res = await ratioApi.getDrugRatios()
-      if (res.code === 200) {
-        drugRatios.value = res.data
+      console.log('获取药品报销比例列表响应:', res)
+      
+      if (res && res.data) {
+        drugRatios.value = res.data || []
       } else {
-        ElMessage.error(res.message || '获取药品报销比例失败')
+        console.error('响应数据格式错误:', res)
+        ElMessage.error('获取药品报销比例列表失败：响应数据格式错误')
       }
     } catch (error: any) {
-      console.error('获取药品报销比例失败:', error)
-      ElMessage.error(error.message || '获取药品报销比例失败')
+      console.error('获取药品报销比例列表失败:', error)
+      ElMessage.error(error.message || '获取药品报销比例列表失败，请检查网络连接')
     }
   }
   
   // 获取医院报销比例列表
-  const getTreatmentRatios = async () => {
+  const fetchHospitalRatios = async () => {
     try {
-      const [level1, level2, level3] = await Promise.all([
-        ratioApi.getHospitalRatios(1, '1'), // 获取一级医院在职人员报销比例
-        ratioApi.getHospitalRatios(2, '1'), // 获取二级医院在职人员报销比例
-        ratioApi.getHospitalRatios(3, '1')  // 获取三级医院在职人员报销比例
+      const [level1Res, level2Res, level3Res] = await Promise.all([
+        ratioApi.getHospitalRatios(1, '1'),
+        ratioApi.getHospitalRatios(2, '1'),
+        ratioApi.getHospitalRatios(3, '1')
       ])
-      if (level1.data && level2.data && level3.data) {
-        treatmentRatios.value = [
-          ...level1.data.map(item => ({ ...item, hospitalLevel: '一级医院' })),
-          ...level2.data.map(item => ({ ...item, hospitalLevel: '二级医院' })),
-          ...level3.data.map(item => ({ ...item, hospitalLevel: '三级医院' }))
-        ]
-      }
-    } catch (error) {
+      
+      console.log('获取医院报销比例列表响应:', {
+        level1: level1Res,
+        level2: level2Res,
+        level3: level3Res
+      })
+      
+      const allRatios = []
+      if (level1Res && level1Res.data) allRatios.push(...level1Res.data)
+      if (level2Res && level2Res.data) allRatios.push(...level2Res.data)
+      if (level3Res && level3Res.data) allRatios.push(...level3Res.data)
+      
+      treatmentRatios.value = allRatios
+    } catch (error: any) {
       console.error('获取医院报销比例列表失败:', error)
+      ElMessage.error(error.message || '获取医院报销比例列表失败，请检查网络连接')
     }
   }
+  
+  // 监听标签页切换
+  watch(activeTab, (newTab) => {
+    if (newTab === 'drug') {
+      fetchDrugRatios()
+    } else if (newTab === 'hospital') {
+      fetchHospitalRatios()
+    }
+  })
+  
+  // 初始化加载
+  onMounted(() => {
+    if (activeTab.value === 'drug') {
+      fetchDrugRatios()
+    } else {
+      fetchHospitalRatios()
+    }
+  })
   
   // 药品报销比例操作
   const handleAddDrugRatio = () => {
@@ -507,15 +535,15 @@
   // 处理医院报销比例删除
   const handleDeleteTreatmentRatio = (row: HospitalReimbursementVO) => {
     ElMessageBox.confirm('确认删除该报销比例配置?', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
     }).then(async () => {
       try {
         const level = row.hospitalLevel === '一级医院' ? 1 : row.hospitalLevel === '二级医院' ? 2 : 3
         await ratioApi.deleteHospitalRatio(level, row.id!)
         ElMessage.success('删除成功')
-        getTreatmentRatios()
+        fetchHospitalRatios()
       } catch (error) {
         console.error('删除失败:', error)
         ElMessage.error('删除失败')
@@ -539,7 +567,7 @@
             ElMessage.success('更新成功')
           }
           treatmentRatioDialog.visible = false
-          getTreatmentRatios()
+          fetchHospitalRatios()
         } catch (error) {
           console.error('保存失败:', error)
           ElMessage.error('保存失败')
@@ -574,8 +602,8 @@
   }
   
   // 初始化
-  fetchDrugRatios()
-  getTreatmentRatios()
+  // fetchDrugRatios()
+  // getTreatmentRatios()
   </script>
   
   <style scoped>

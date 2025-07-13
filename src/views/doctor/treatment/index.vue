@@ -131,26 +131,26 @@
         label-width="100px"
         :disabled="dialogType === 'view'"
       >
-        <el-form-item label="患者姓名" prop="patientName">
-          <el-input v-model="form.patientName" placeholder="请输入患者姓名" />
-        </el-form-item>
+            <el-form-item label="患者姓名" prop="patientName">
+              <el-input v-model="form.patientName" placeholder="请输入患者姓名" />
+            </el-form-item>
         <el-form-item label="诊疗项目" prop="diagnosisId">
-          <el-select
+                <el-select
             v-model="form.diagnosisId"
-            filterable
-            remote
-            :remote-method="searchTreatments"
+                  filterable
+                  remote
+                  :remote-method="searchTreatments"
             placeholder="请选择诊疗项目"
-            style="width: 100%"
+                  style="width: 100%"
             @change="handleTreatmentChange"
-          >
-            <el-option
-              v-for="item in treatmentOptions"
-              :key="item.id"
+                >
+                  <el-option
+                    v-for="item in treatmentOptions"
+                    :key="item.id"
               :label="item.medicalName"
-              :value="item.id"
-            />
-          </el-select>
+                    :value="item.id"
+                  />
+                </el-select>
         </el-form-item>
         <el-form-item label="项目编码">
           <el-input v-model="form.medicalNumber" disabled />
@@ -175,7 +175,7 @@
             type="datetime"
             placeholder="请选择开立时间"
             value-format="YYYY-MM-DD HH:mm:ss"
-            style="width: 100%"
+                  style="width: 100%"
           />
         </el-form-item>
         <el-form-item label="医嘱内容" prop="doctorOrder">
@@ -339,7 +339,7 @@ const handleEdit = async (row: PatientTreatmentVO) => {
   try {
     const { data } = await treatmentApi.getById(row.id!)
     Object.assign(form, data)
-    dialogVisible.value = true
+  dialogVisible.value = true
   } catch (error) {
     console.error('获取医疗服务项目详情失败:', error)
   }
@@ -351,7 +351,7 @@ const handleView = async (row: PatientTreatmentVO) => {
   try {
     const { data } = await treatmentApi.getById(row.id!)
     Object.assign(form, data)
-    dialogVisible.value = true
+  dialogVisible.value = true
   } catch (error) {
     console.error('获取医疗服务项目详情失败:', error)
   }
