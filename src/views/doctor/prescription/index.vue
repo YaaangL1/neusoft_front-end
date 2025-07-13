@@ -11,10 +11,10 @@
             @keyup.enter="handleSearch"
           />
         </el-form-item>
-        <el-form-item label="就诊号" prop="visitNumber">
+        <el-form-item label="药品名称" prop="drugName">
           <el-input
-            v-model="searchForm.visitNumber"
-            placeholder="请输入就诊号"
+            v-model="searchForm.drugName"
+            placeholder="请输入药品名称"
             clearable
             @keyup.enter="handleSearch"
           />
@@ -26,7 +26,7 @@
             range-separator="至"
             start-placeholder="开始日期"
             end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD HH:mm:ss"
           />
         </el-form-item>
         <el-form-item>
@@ -64,22 +64,22 @@
       >
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="patientName" label="患者姓名" width="120" />
-        <el-table-column prop="visitNumber" label="就诊号" width="120" />
-        <el-table-column prop="prescriptionDate" label="开具日期" width="120">
+        <el-table-column prop="chinaName" label="药品名称" width="200" />
+        <el-table-column prop="specifications" label="规格" width="120" />
+        <el-table-column prop="drugUnit" label="单位" width="80" />
+        <el-table-column prop="useMethod" label="用法" width="120" />
+        <el-table-column prop="orderNumber" label="频次" width="80" align="center" />
+        <el-table-column prop="startTime" label="开始时间" width="160">
           <template #default="{ row }">
-            {{ formatDate(row.prescriptionDate) }}
+            {{ formatDate(row.startTime) }}
           </template>
         </el-table-column>
-        <el-table-column prop="prescriptionType" label="处方类型" width="120">
+        <el-table-column prop="endTime" label="结束时间" width="160">
           <template #default="{ row }">
-            <el-tag :type="prescriptionTypeTag(row.prescriptionType)">
-              {{ prescriptionTypeText(row.prescriptionType) }}
-            </el-tag>
+            {{ formatDate(row.endTime) }}
           </template>
         </el-table-column>
-        <el-table-column prop="diagnosis" label="诊断信息" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="doctorName" label="医生姓名" width="120" />
-        <el-table-column prop="department" label="科室" width="120" />
+        <el-table-column prop="doctorOrder" label="医嘱内容" min-width="200" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="prescriptionStatusType(row.status)">
@@ -125,7 +125,7 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogType === 'add' ? '新增处方' : dialogType === 'edit' ? '编辑处方' : '查看处方'"
-      width="900px"
+      width="600px"
       @close="resetForm"
     >
       <el-form
@@ -135,147 +135,62 @@
         label-width="100px"
         :disabled="dialogType === 'view'"
       >
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="患者姓名" prop="patientName">
-              <el-input v-model="form.patientName" placeholder="请输入患者姓名" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="就诊号" prop="visitNumber">
-              <el-input v-model="form.visitNumber" placeholder="请输入就诊号" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="处方类型" prop="prescriptionType">
-              <el-select v-model="form.prescriptionType" placeholder="请选择处方类型" style="width: 100%">
-                <el-option label="西药" :value="1" />
-                <el-option label="中成药" :value="2" />
-                <el-option label="中药" :value="3" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="开具日期" prop="prescriptionDate">
-              <el-date-picker
-                v-model="form.prescriptionDate"
-                type="date"
-                placeholder="请选择开具日期"
-                value-format="YYYY-MM-DD"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="科室" prop="department">
-              <el-select v-model="form.department" placeholder="请选择科室" style="width: 100%">
-                <el-option label="内科" value="内科" />
-                <el-option label="外科" value="外科" />
-                <el-option label="儿科" value="儿科" />
-                <el-option label="妇产科" value="妇产科" />
-                <el-option label="眼科" value="眼科" />
-                <el-option label="耳鼻喉科" value="耳鼻喉科" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="诊断信息" prop="diagnosis">
-              <el-input v-model="form.diagnosis" placeholder="请输入诊断信息" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- 药品列表 -->
-        <el-form-item label="药品列表" prop="medicines">
-          <el-table :data="form.medicines" border style="width: 100%">
-            <el-table-column type="index" label="序号" width="60" align="center" />
-            <el-table-column label="药品名称" min-width="200">
-              <template #default="{ row }">
-                <el-select
-                  v-model="row.drugId"
-                  filterable
-                  remote
-                  :remote-method="searchDrugs"
-                  placeholder="请选择药品"
-                  style="width: 100%"
-                  @change="handleDrugChange($event, row)"
-                >
-                  <el-option
-                    v-for="item in drugOptions"
-                    :key="item.id"
-                    :label="item.drugName"
-                    :value="item.id"
-                  />
-                </el-select>
-              </template>
-            </el-table-column>
-            <el-table-column prop="specification" label="规格" width="120" />
-            <el-table-column prop="unit" label="单位" width="80" />
-            <el-table-column label="用法" width="150">
-              <template #default="{ row }">
-                <el-select v-model="row.usage" placeholder="请选择用法" style="width: 100%">
-                  <el-option label="口服" value="口服" />
-                  <el-option label="静脉注射" value="静脉注射" />
-                  <el-option label="肌肉注射" value="肌肉注射" />
-                  <el-option label="外用" value="外用" />
-                </el-select>
-              </template>
-            </el-table-column>
-            <el-table-column label="用量" width="120">
-              <template #default="{ row }">
-                <el-input-number
-                  v-model="row.dosage"
-                  :min="0"
-                  :precision="2"
-                  style="width: 100%"
-                />
-              </template>
-            </el-table-column>
-            <el-table-column label="频次" width="150">
-              <template #default="{ row }">
-                <el-select v-model="row.frequency" placeholder="请选择频次" style="width: 100%">
-                  <el-option label="每日一次" value="每日一次" />
-                  <el-option label="每日两次" value="每日两次" />
-                  <el-option label="每日三次" value="每日三次" />
-                  <el-option label="每日四次" value="每日四次" />
-                </el-select>
-              </template>
-            </el-table-column>
-            <el-table-column label="天数" width="100">
-              <template #default="{ row }">
-                <el-input-number
-                  v-model="row.days"
-                  :min="1"
-                  :precision="0"
-                  style="width: 100%"
-                />
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="80" align="center">
-              <template #default="{ $index }">
-                <el-button type="danger" link @click="removeMedicine($index)">
-                  删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <div style="margin-top: 10px">
-            <el-button type="primary" @click="addMedicine">
-              <el-icon><Plus /></el-icon>
-              添加药品
-            </el-button>
-          </div>
+        <el-form-item label="患者姓名" prop="patientName">
+          <el-input v-model="form.patientName" placeholder="请输入患者姓名" />
         </el-form-item>
-
-        <el-form-item label="医嘱" prop="instructions">
+        <el-form-item label="药品" prop="drugId">
+          <el-select
+            v-model="form.drugId"
+            filterable
+            remote
+            :remote-method="searchDrugs"
+            placeholder="请选择药品"
+            style="width: 100%"
+            @change="handleDrugChange"
+          >
+            <el-option
+              v-for="item in drugOptions"
+              :key="item.id"
+              :label="item.chinaName"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="规格">
+          <el-input v-model="form.specifications" disabled />
+        </el-form-item>
+        <el-form-item label="单位">
+          <el-input v-model="form.drugUnit" disabled />
+        </el-form-item>
+        <el-form-item label="用法" prop="useMethod">
+          <el-input v-model="form.useMethod" placeholder="请输入用法" />
+        </el-form-item>
+        <el-form-item label="频次" prop="orderNumber">
+          <el-input-number
+            v-model="form.orderNumber"
+            :min="0"
+            :precision="0"
+            style="width: 100%"
+            placeholder="请输入频次（次/天）"
+          />
+        </el-form-item>
+        <el-form-item label="用药时间" prop="startTime">
+          <el-date-picker
+            v-model="prescriptionDateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="医嘱内容" prop="doctorOrder">
           <el-input
-            v-model="form.instructions"
+            v-model="form.doctorOrder"
             type="textarea"
             rows="3"
-            placeholder="请输入医嘱"
+            placeholder="请输入医嘱内容"
           />
         </el-form-item>
       </el-form>
@@ -292,53 +207,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { request } from '@/utils/request'
+import { prescriptionApi } from '@/api/doctor'
+import { drugApi } from '@/api/insurance'
+import type { PatientPrescriptionVO } from '@/types/doctor'
 import dayjs from 'dayjs'
 
 // 接口定义
 interface Drug {
   id: number
-  drugName: string
-  specification: string
-  unit: string
-  price: number
-}
-
-interface PrescriptionMedicine {
-  id?: number
-  drugId: number
-  drugName?: string
-  specification?: string
-  unit?: string
-  usage: string
-  dosage: number
-  frequency: string
-  days: number
-}
-
-interface Prescription {
-  id: number
-  patientName: string
-  visitNumber: string
-  prescriptionDate: string
-  prescriptionType: number
-  diagnosis: string
-  doctorName: string
-  department: string
-  status: number
-  medicines: PrescriptionMedicine[]
-  instructions?: string
-  createTime: string
-  updateTime: string
+  chinaName: string
+  specifications: string
+  drugUnit: string
+  drugPrice: number
 }
 
 // 搜索表单
 const searchForm = reactive({
   patientName: '',
-  visitNumber: '',
+  drugName: '',
   prescriptionDate: [] as string[]
 })
 
@@ -351,7 +240,7 @@ const pagination = reactive({
 
 // 表格数据
 const loading = ref(false)
-const tableData = ref<Prescription[]>([])
+const tableData = ref<PatientPrescriptionVO[]>([])
 
 // 药品选项
 const drugOptions = ref<Drug[]>([])
@@ -360,15 +249,16 @@ const drugOptions = ref<Drug[]>([])
 const dialogVisible = ref(false)
 const dialogType = ref<'add' | 'edit' | 'view'>('add')
 const formRef = ref<FormInstance>()
-const form = reactive<Partial<Prescription>>({
+const form = reactive<Partial<PatientPrescriptionVO>>({
   patientName: '',
-  visitNumber: '',
-  prescriptionDate: '',
-  prescriptionType: undefined,
-  diagnosis: '',
-  department: '',
-  medicines: [],
-  instructions: ''
+  patientId: undefined,
+  drugId: undefined,
+  doctorOrder: '',
+  useMethod: '',
+  orderNumber: undefined,
+  startTime: '',
+  endTime: '',
+  status: 1
 })
 
 // 表单校验规则
@@ -377,38 +267,46 @@ const rules: FormRules = {
     { required: true, message: '请输入患者姓名', trigger: 'blur' },
     { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
   ],
-  visitNumber: [
-    { required: true, message: '请输入就诊号', trigger: 'blur' }
+  drugId: [
+    { required: true, message: '请选择药品', trigger: 'change' }
   ],
-  prescriptionDate: [
-    { required: true, message: '请选择开具日期', trigger: 'change' }
+  useMethod: [
+    { required: true, message: '请输入用法', trigger: 'blur' }
   ],
-  prescriptionType: [
-    { required: true, message: '请选择处方类型', trigger: 'change' }
+  orderNumber: [
+    { required: true, message: '请输入医嘱频次', trigger: 'change' }
   ],
-  department: [
-    { required: true, message: '请选择科室', trigger: 'change' }
+  startTime: [
+    { required: true, message: '请选择开始时间', trigger: 'change' }
   ],
-  diagnosis: [
-    { required: true, message: '请输入诊断信息', trigger: 'blur' }
-  ],
-  medicines: [
-    { required: true, message: '请添加药品', trigger: 'change' }
+  endTime: [
+    { required: true, message: '请选择结束时间', trigger: 'change' }
   ]
 }
+
+// 处方时间范围
+const prescriptionDateRange = computed({
+  get: () => {
+    return [form.startTime || '', form.endTime || '']
+  },
+  set: (val: [string, string]) => {
+    form.startTime = val[0]
+    form.endTime = val[1]
+  }
+})
 
 // 获取处方列表
 const fetchPrescriptions = async () => {
   loading.value = true
   try {
-    const { list, total } = await request.get<{ list: Prescription[], total: number }>('/api/doctor/prescription', {
+    const { data } = await prescriptionApi.getPage({
       ...searchForm,
       ...pagination,
       startDate: searchForm.prescriptionDate?.[0],
       endDate: searchForm.prescriptionDate?.[1]
     })
-    tableData.value = list
-    pagination.total = total
+    tableData.value = data.list
+    pagination.total = data.total
   } catch (error) {
     console.error('获取处方列表失败:', error)
   } finally {
@@ -420,10 +318,14 @@ const fetchPrescriptions = async () => {
 const searchDrugs = async (query: string) => {
   if (query) {
     try {
-      const { list } = await request.get<{ list: Drug[] }>('/api/insurance/drugs/search', {
-        drugName: query
-      })
-      drugOptions.value = list
+      const { data } = await drugApi.search(query)
+      drugOptions.value = data.map(item => ({
+        id: item.id,
+        chinaName: item.chinaName,
+        specifications: item.specifications || '',
+        drugUnit: item.drugUnit,
+        drugPrice: item.drugPrice
+      }))
     } catch (error) {
       console.error('搜索药品失败:', error)
     }
@@ -433,32 +335,17 @@ const searchDrugs = async (query: string) => {
 }
 
 // 处理药品选择变化
-const handleDrugChange = (drugId: number, row: PrescriptionMedicine) => {
+const handleDrugChange = (drugId: number) => {
   const drug = drugOptions.value.find(item => item.id === drugId)
   if (drug) {
-    row.drugName = drug.drugName
-    row.specification = drug.specification
-    row.unit = drug.unit
+    Object.assign(form, {
+      drugId: drug.id,
+      chinaName: drug.chinaName,
+      specifications: drug.specifications,
+      drugUnit: drug.drugUnit,
+      drugPrice: drug.drugPrice
+    })
   }
-}
-
-// 添加药品
-const addMedicine = () => {
-  if (!form.medicines) {
-    form.medicines = []
-  }
-  form.medicines.push({
-    drugId: 0,
-    usage: '',
-    dosage: 0,
-    frequency: '',
-    days: 1
-  })
-}
-
-// 移除药品
-const removeMedicine = (index: number) => {
-  form.medicines?.splice(index, 1)
 }
 
 // 处理查询
@@ -471,7 +358,7 @@ const handleSearch = () => {
 const resetSearch = () => {
   Object.assign(searchForm, {
     patientName: '',
-    visitNumber: '',
+    drugName: '',
     prescriptionDate: []
   })
   handleSearch()
@@ -484,27 +371,37 @@ const handleAdd = () => {
 }
 
 // 处理编辑
-const handleEdit = (row: Prescription) => {
+const handleEdit = async (row: PatientPrescriptionVO) => {
   dialogType.value = 'edit'
-  Object.assign(form, row)
-  dialogVisible.value = true
+  try {
+    const { data } = await prescriptionApi.getById(row.id!)
+    Object.assign(form, data)
+    dialogVisible.value = true
+  } catch (error) {
+    console.error('获取处方详情失败:', error)
+  }
 }
 
 // 处理查看
-const handleView = (row: Prescription) => {
+const handleView = async (row: PatientPrescriptionVO) => {
   dialogType.value = 'view'
-  Object.assign(form, row)
-  dialogVisible.value = true
+  try {
+    const { data } = await prescriptionApi.getById(row.id!)
+    Object.assign(form, data)
+    dialogVisible.value = true
+  } catch (error) {
+    console.error('获取处方详情失败:', error)
+  }
 }
 
 // 处理打印
-const handlePrint = (row: Prescription) => {
+const handlePrint = (row: PatientPrescriptionVO) => {
   // TODO: 实现打印功能
   ElMessage.info('打印功能开发中')
 }
 
 // 处理删除
-const handleDelete = (row: Prescription) => {
+const handleDelete = (row: PatientPrescriptionVO) => {
   ElMessageBox.confirm(
     `确认删除患者"${row.patientName}"的处方吗？`,
     '警告',
@@ -515,7 +412,7 @@ const handleDelete = (row: Prescription) => {
     }
   ).then(async () => {
     try {
-      await request.delete(`/api/doctor/prescription/${row.id}`)
+      await prescriptionApi.delete(row.id!)
       ElMessage.success('删除成功')
       fetchPrescriptions()
     } catch (error) {
@@ -532,10 +429,10 @@ const handleSubmit = async () => {
     if (valid) {
       try {
         if (dialogType.value === 'add') {
-          await request.post('/api/doctor/prescription', form)
+          await prescriptionApi.add(form)
           ElMessage.success('新增成功')
         } else {
-          await request.put(`/api/doctor/prescription/${form.id}`, form)
+          await prescriptionApi.update(form.id!, form)
           ElMessage.success('更新成功')
         }
         dialogVisible.value = false
@@ -554,13 +451,14 @@ const resetForm = () => {
   }
   Object.assign(form, {
     patientName: '',
-    visitNumber: '',
-    prescriptionDate: '',
-    prescriptionType: undefined,
-    diagnosis: '',
-    department: '',
-    medicines: [],
-    instructions: ''
+    patientId: undefined,
+    drugId: undefined,
+    doctorOrder: '',
+    useMethod: '',
+    orderNumber: undefined,
+    startTime: '',
+    endTime: '',
+    status: 1
   })
 }
 
@@ -577,34 +475,7 @@ const handleCurrentChange = (val: number) => {
 
 // 格式化日期
 const formatDate = (date: string) => {
-  return dayjs(date).format('YYYY-MM-DD')
-}
-
-// 处方类型
-const prescriptionTypeTag = (type: number) => {
-  switch (type) {
-    case 1:
-      return ''
-    case 2:
-      return 'warning'
-    case 3:
-      return 'success'
-    default:
-      return 'info'
-  }
-}
-
-const prescriptionTypeText = (type: number) => {
-  switch (type) {
-    case 1:
-      return '西药'
-    case 2:
-      return '中成药'
-    case 3:
-      return '中药'
-    default:
-      return '未知'
-  }
+  return dayjs(date).format('YYYY-MM-DD HH:mm:ss')
 }
 
 // 处方状态
@@ -612,10 +483,10 @@ const prescriptionStatusType = (status: number) => {
   switch (status) {
     case 1:
       return 'success'
+    case 0:
+      return 'danger'
     case 2:
       return 'warning'
-    case 3:
-      return 'danger'
     default:
       return 'info'
   }
@@ -624,11 +495,11 @@ const prescriptionStatusType = (status: number) => {
 const prescriptionStatusText = (status: number) => {
   switch (status) {
     case 1:
-      return '已完成'
-    case 2:
-      return '待审核'
-    case 3:
+      return '正常执行'
+    case 0:
       return '已作废'
+    case 2:
+      return '已停止'
     default:
       return '未知'
   }

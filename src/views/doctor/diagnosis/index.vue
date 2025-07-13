@@ -3,30 +3,20 @@
     <!-- 搜索栏 -->
     <el-card class="search-card">
       <el-form :inline="true" :model="searchForm" ref="searchFormRef">
-        <el-form-item label="患者姓名" prop="patientName">
+        <el-form-item label="疾病名称" prop="diseaseName">
           <el-input
-            v-model="searchForm.patientName"
-            placeholder="请输入患者姓名"
+            v-model="searchForm.diseaseName"
+            placeholder="请输入疾病名称"
             clearable
             @keyup.enter="handleSearch"
           />
         </el-form-item>
-        <el-form-item label="就诊号" prop="visitNumber">
+        <el-form-item label="患者ID" prop="patientId">
           <el-input
-            v-model="searchForm.visitNumber"
-            placeholder="请输入就诊号"
+            v-model="searchForm.patientId"
+            placeholder="请输入患者ID"
             clearable
             @keyup.enter="handleSearch"
-          />
-        </el-form-item>
-        <el-form-item label="诊断日期" prop="diagnosisDate">
-          <el-date-picker
-            v-model="searchForm.diagnosisDate"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
           />
         </el-form-item>
         <el-form-item>
@@ -64,20 +54,21 @@
       >
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="patientName" label="患者姓名" width="120" />
-        <el-table-column prop="visitNumber" label="就诊号" width="120" />
-        <el-table-column prop="diagnosisDate" label="诊断日期" width="120">
+        <el-table-column prop="diseaseName" label="疾病名称" width="150" />
+        <el-table-column prop="diseaseCode" label="疾病编码" width="120" />
+        <el-table-column prop="diseaseCategory" label="疾病类别" width="120" />
+        <el-table-column prop="diseaseTypeName" label="诊断类型" width="120">
           <template #default="{ row }">
-            {{ formatDate(row.diagnosisDate) }}
+            <el-tag :type="row.diseaseType === 1 ? 'primary' : row.diseaseType === 2 ? 'success' : 'info'">
+              {{ row.diseaseTypeName }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="mainDiagnosis" label="主要诊断" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="otherDiagnosis" label="其他诊断" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="doctorName" label="医生姓名" width="120" />
-        <el-table-column prop="department" label="科室" width="120" />
+        <el-table-column prop="orderTime" label="诊断时间" width="180" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="diagnosisStatusType(row.status)">
-              {{ diagnosisStatusText(row.status) }}
+            <el-tag :type="row.status === 1 ? 'success' : 'danger'">
+              {{ row.status === 1 ? '正常' : '停用' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -133,60 +124,39 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="就诊号" prop="visitNumber">
-              <el-input v-model="form.visitNumber" placeholder="请输入就诊号" />
+            <el-form-item label="疾病名称" prop="diseaseName">
+              <el-input v-model="form.diseaseName" placeholder="请输入疾病名称" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="诊断日期" prop="diagnosisDate">
-              <el-date-picker
-                v-model="form.diagnosisDate"
-                type="date"
-                placeholder="请选择诊断日期"
-                value-format="YYYY-MM-DD"
-                style="width: 100%"
-              />
+            <el-form-item label="疾病类别" prop="diseaseCategory">
+              <el-input v-model="form.diseaseCategory" placeholder="请输入疾病类别" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="科室" prop="department">
-              <el-select v-model="form.department" placeholder="请选择科室" style="width: 100%">
-                <el-option label="内科" value="内科" />
-                <el-option label="外科" value="外科" />
-                <el-option label="儿科" value="儿科" />
-                <el-option label="妇产科" value="妇产科" />
-                <el-option label="眼科" value="眼科" />
-                <el-option label="耳鼻喉科" value="耳鼻喉科" />
+            <el-form-item label="诊断类型" prop="diseaseType">
+              <el-select v-model="form.diseaseType" placeholder="请选择诊断类型">
+                <el-option label="入院诊断" :value="1" />
+                <el-option label="主要诊断" :value="2" />
+                <el-option label="其他诊断" :value="3" />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="主要诊断" prop="mainDiagnosis">
-          <el-input
-            v-model="form.mainDiagnosis"
-            type="textarea"
-            rows="3"
-            placeholder="请输入主要诊断"
-          />
-        </el-form-item>
-        <el-form-item label="其他诊断" prop="otherDiagnosis">
-          <el-input
-            v-model="form.otherDiagnosis"
-            type="textarea"
-            rows="3"
-            placeholder="请输入其他诊断"
-          />
-        </el-form-item>
-        <el-form-item label="诊断说明" prop="diagnosisDescription">
-          <el-input
-            v-model="form.diagnosisDescription"
-            type="textarea"
-            rows="3"
-            placeholder="请输入诊断说明"
-          />
-        </el-form-item>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="疾病编码" prop="diseaseCode">
+              <el-input v-model="form.diseaseCode" placeholder="请输入疾病编码" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="ICD编码" prop="diseaseICD">
+              <el-input v-model="form.diseaseICD" placeholder="请输入ICD编码" />
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
@@ -204,30 +174,14 @@
 import { ref, reactive } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { request } from '@/utils/request'
+import { diagnosisApi } from '@/api/doctor'
+import type { PatientDiagnosisVO } from '@/types/doctor'
 import dayjs from 'dayjs'
-
-// 接口定义
-interface Diagnosis {
-  id: number
-  patientName: string
-  visitNumber: string
-  diagnosisDate: string
-  mainDiagnosis: string
-  otherDiagnosis?: string
-  diagnosisDescription?: string
-  doctorName: string
-  department: string
-  status: number
-  createTime: string
-  updateTime: string
-}
 
 // 搜索表单
 const searchForm = reactive({
-  patientName: '',
-  visitNumber: '',
-  diagnosisDate: [] as string[]
+  diseaseName: '',
+  patientId: undefined as number | undefined
 })
 
 // 分页信息
@@ -239,54 +193,21 @@ const pagination = reactive({
 
 // 表格数据
 const loading = ref(false)
-const tableData = ref<Diagnosis[]>([])
-
-// 表单数据
-const dialogVisible = ref(false)
-const dialogType = ref<'add' | 'edit' | 'view'>('add')
-const formRef = ref<FormInstance>()
-const form = reactive<Partial<Diagnosis>>({
-  patientName: '',
-  visitNumber: '',
-  diagnosisDate: '',
-  mainDiagnosis: '',
-  otherDiagnosis: '',
-  diagnosisDescription: '',
-  department: ''
-})
-
-// 表单校验规则
-const rules: FormRules = {
-  patientName: [
-    { required: true, message: '请输入患者姓名', trigger: 'blur' },
-    { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
-  ],
-  visitNumber: [
-    { required: true, message: '请输入就诊号', trigger: 'blur' }
-  ],
-  diagnosisDate: [
-    { required: true, message: '请选择诊断日期', trigger: 'change' }
-  ],
-  department: [
-    { required: true, message: '请选择科室', trigger: 'change' }
-  ],
-  mainDiagnosis: [
-    { required: true, message: '请输入主要诊断', trigger: 'blur' }
-  ]
-}
+const tableData = ref<PatientDiagnosisVO[]>([])
 
 // 获取诊断列表
 const fetchDiagnosis = async () => {
-  loading.value = true
   try {
-    const { list, total } = await request.get<{ list: Diagnosis[], total: number }>('/api/doctor/diagnosis', {
-      ...searchForm,
-      ...pagination,
-      startDate: searchForm.diagnosisDate?.[0],
-      endDate: searchForm.diagnosisDate?.[1]
+    loading.value = true
+    const res = await diagnosisApi.getPage({
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize,
+      ...searchForm
     })
-    tableData.value = list
-    pagination.total = total
+    if (res.data) {
+      tableData.value = res.data.list
+      pagination.total = res.data.total
+    }
   } catch (error) {
     console.error('获取诊断列表失败:', error)
   } finally {
@@ -294,100 +215,17 @@ const fetchDiagnosis = async () => {
   }
 }
 
-// 处理查询
+// 搜索
 const handleSearch = () => {
   pagination.pageNum = 1
   fetchDiagnosis()
 }
 
-// 重置查询
+// 重置搜索
 const resetSearch = () => {
-  Object.assign(searchForm, {
-    patientName: '',
-    visitNumber: '',
-    diagnosisDate: []
-  })
+  searchForm.diseaseName = ''
+  searchForm.patientId = undefined
   handleSearch()
-}
-
-// 处理新增
-const handleAdd = () => {
-  dialogType.value = 'add'
-  dialogVisible.value = true
-}
-
-// 处理编辑
-const handleEdit = (row: Diagnosis) => {
-  dialogType.value = 'edit'
-  Object.assign(form, row)
-  dialogVisible.value = true
-}
-
-// 处理查看
-const handleView = (row: Diagnosis) => {
-  dialogType.value = 'view'
-  Object.assign(form, row)
-  dialogVisible.value = true
-}
-
-// 处理删除
-const handleDelete = (row: Diagnosis) => {
-  ElMessageBox.confirm(
-    `确认删除患者"${row.patientName}"的诊断记录吗？`,
-    '警告',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(async () => {
-    try {
-      await request.delete(`/api/doctor/diagnosis/${row.id}`)
-      ElMessage.success('删除成功')
-      fetchDiagnosis()
-    } catch (error) {
-      console.error('删除失败:', error)
-    }
-  })
-}
-
-// 处理表单提交
-const handleSubmit = async () => {
-  if (!formRef.value) return
-  
-  await formRef.value.validate(async (valid) => {
-    if (valid) {
-      try {
-        if (dialogType.value === 'add') {
-          await request.post('/api/doctor/diagnosis', form)
-          ElMessage.success('新增成功')
-        } else {
-          await request.put(`/api/doctor/diagnosis/${form.id}`, form)
-          ElMessage.success('更新成功')
-        }
-        dialogVisible.value = false
-        fetchDiagnosis()
-      } catch (error) {
-        console.error('保存失败:', error)
-      }
-    }
-  })
-}
-
-// 重置表单
-const resetForm = () => {
-  if (formRef.value) {
-    formRef.value.resetFields()
-  }
-  Object.assign(form, {
-    patientName: '',
-    visitNumber: '',
-    diagnosisDate: '',
-    mainDiagnosis: '',
-    otherDiagnosis: '',
-    diagnosisDescription: '',
-    department: ''
-  })
 }
 
 // 处理分页变化
@@ -401,36 +239,101 @@ const handleCurrentChange = (val: number) => {
   fetchDiagnosis()
 }
 
-// 格式化日期
-const formatDate = (date: string) => {
-  return dayjs(date).format('YYYY-MM-DD')
+// 表单数据
+const dialogVisible = ref(false)
+const dialogType = ref<'add' | 'edit' | 'view'>('add')
+const formRef = ref<FormInstance>()
+const form = reactive<Partial<PatientDiagnosisVO>>({
+  patientName: '',
+  diseaseName: '',
+  diseaseType: 1,
+  diseaseCategory: '',
+  orderTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+  status: 1
+})
+
+// 表单校验规则
+const rules: FormRules = {
+  patientName: [{ required: true, message: '请输入患者姓名', trigger: 'blur' }],
+  diseaseName: [{ required: true, message: '请输入疾病名称', trigger: 'blur' }],
+  diseaseType: [{ required: true, message: '请选择诊断类型', trigger: 'change' }],
+  diseaseCategory: [{ required: true, message: '请输入疾病类别', trigger: 'blur' }]
 }
 
-// 诊断状态
-const diagnosisStatusType = (status: number) => {
-  switch (status) {
-    case 1:
-      return 'success'
-    case 2:
-      return 'warning'
-    case 3:
-      return 'danger'
-    default:
-      return 'info'
+// 重置表单
+const resetForm = () => {
+  if (formRef.value) {
+    formRef.value.resetFields()
   }
+  Object.assign(form, {
+    patientName: '',
+    diseaseName: '',
+    diseaseType: 1,
+    diseaseCategory: '',
+    orderTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+    status: 1
+  })
 }
 
-const diagnosisStatusText = (status: number) => {
-  switch (status) {
-    case 1:
-      return '已完成'
-    case 2:
-      return '进行中'
-    case 3:
-      return '已取消'
-    default:
-      return '未知'
-  }
+// 新增诊断
+const handleAdd = () => {
+  dialogType.value = 'add'
+  dialogVisible.value = true
+}
+
+// 编辑诊断
+const handleEdit = (row: PatientDiagnosisVO) => {
+  dialogType.value = 'edit'
+  Object.assign(form, row)
+  dialogVisible.value = true
+}
+
+// 查看诊断
+const handleView = (row: PatientDiagnosisVO) => {
+  dialogType.value = 'view'
+  Object.assign(form, row)
+  dialogVisible.value = true
+}
+
+// 删除诊断
+const handleDelete = (row: PatientDiagnosisVO) => {
+  ElMessageBox.confirm('确认删除该诊断记录?', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      await diagnosisApi.delete(row.id!)
+      ElMessage.success('删除成功')
+      fetchDiagnosis()
+    } catch (error) {
+      console.error('删除失败:', error)
+      ElMessage.error('删除失败')
+    }
+  })
+}
+
+// 提交表单
+const handleSubmit = async () => {
+  if (!formRef.value) return
+  await formRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        if (dialogType.value === 'add') {
+          await diagnosisApi.add(form)
+          ElMessage.success('新增成功')
+        } else {
+          await diagnosisApi.update(form.id!, form)
+          ElMessage.success('更新成功')
+        }
+        dialogVisible.value = false
+        fetchDiagnosis()
+      } catch (error) {
+        console.error('保存失败:', error)
+        ElMessage.error('保存失败')
+      }
+    }
+  })
 }
 
 // 初始化
@@ -458,3 +361,4 @@ fetchDiagnosis()
   justify-content: flex-end;
 }
 </style>
+

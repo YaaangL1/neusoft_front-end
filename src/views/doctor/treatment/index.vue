@@ -11,22 +11,22 @@
             @keyup.enter="handleSearch"
           />
         </el-form-item>
-        <el-form-item label="就诊号" prop="visitNumber">
+        <el-form-item label="项目名称" prop="treatmentName">
           <el-input
-            v-model="searchForm.visitNumber"
-            placeholder="请输入就诊号"
+            v-model="searchForm.treatmentName"
+            placeholder="请输入项目名称"
             clearable
             @keyup.enter="handleSearch"
           />
         </el-form-item>
-        <el-form-item label="开具日期" prop="treatmentDate">
+        <el-form-item label="开立时间" prop="treatmentDate">
           <el-date-picker
             v-model="searchForm.treatmentDate"
             type="daterange"
             range-separator="至"
             start-placeholder="开始日期"
             end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD HH:mm:ss"
           />
         </el-form-item>
         <el-form-item>
@@ -64,20 +64,21 @@
       >
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="patientName" label="患者姓名" width="120" />
-        <el-table-column prop="visitNumber" label="就诊号" width="120" />
-        <el-table-column prop="treatmentDate" label="开具日期" width="120">
+        <el-table-column prop="medicalName" label="项目名称" width="200" />
+        <el-table-column prop="medicalNumber" label="项目编码" width="120" />
+        <el-table-column prop="medicalType" label="项目类别" width="120" />
+        <el-table-column prop="medicalUnit" label="计价单位" width="100" />
+        <el-table-column prop="medicalPrice" label="价格" width="120">
           <template #default="{ row }">
-            {{ formatDate(row.treatmentDate) }}
+            ¥{{ row.medicalPrice?.toFixed(2) }}
           </template>
         </el-table-column>
-        <el-table-column prop="diagnosis" label="诊断信息" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="doctorName" label="医生姓名" width="120" />
-        <el-table-column prop="department" label="科室" width="120" />
-        <el-table-column prop="totalAmount" label="总金额" width="120">
+        <el-table-column prop="orderTime" label="开立时间" width="160">
           <template #default="{ row }">
-            ¥{{ row.totalAmount.toFixed(2) }}
+            {{ formatDate(row.orderTime) }}
           </template>
         </el-table-column>
+        <el-table-column prop="doctorOrder" label="医嘱内容" min-width="200" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="treatmentStatusType(row.status)">
@@ -120,7 +121,7 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogType === 'add' ? '新增医疗服务项目' : dialogType === 'edit' ? '编辑医疗服务项目' : '查看医疗服务项目'"
-      width="900px"
+      width="600px"
       @close="resetForm"
     >
       <el-form
@@ -130,119 +131,59 @@
         label-width="100px"
         :disabled="dialogType === 'view'"
       >
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="患者姓名" prop="patientName">
-              <el-input v-model="form.patientName" placeholder="请输入患者姓名" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="就诊号" prop="visitNumber">
-              <el-input v-model="form.visitNumber" placeholder="请输入就诊号" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="开具日期" prop="treatmentDate">
-              <el-date-picker
-                v-model="form.treatmentDate"
-                type="date"
-                placeholder="请选择开具日期"
-                value-format="YYYY-MM-DD"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="科室" prop="department">
-              <el-select v-model="form.department" placeholder="请选择科室" style="width: 100%">
-                <el-option label="内科" value="内科" />
-                <el-option label="外科" value="外科" />
-                <el-option label="儿科" value="儿科" />
-                <el-option label="妇产科" value="妇产科" />
-                <el-option label="眼科" value="眼科" />
-                <el-option label="耳鼻喉科" value="耳鼻喉科" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="诊断信息" prop="diagnosis">
-              <el-input v-model="form.diagnosis" placeholder="请输入诊断信息" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- 服务项目列表 -->
-        <el-form-item label="服务项目" prop="items">
-          <el-table :data="form.items" border style="width: 100%">
-            <el-table-column type="index" label="序号" width="60" align="center" />
-            <el-table-column label="项目名称" min-width="200">
-              <template #default="{ row }">
-                <el-select
-                  v-model="row.treatmentId"
-                  filterable
-                  remote
-                  :remote-method="searchTreatments"
-                  placeholder="请选择项目"
-                  style="width: 100%"
-                  @change="handleTreatmentChange($event, row)"
-                >
-                  <el-option
-                    v-for="item in treatmentOptions"
-                    :key="item.id"
-                    :label="item.projectName"
-                    :value="item.id"
-                  />
-                </el-select>
-              </template>
-            </el-table-column>
-            <el-table-column prop="specification" label="规格" width="120" />
-            <el-table-column prop="unit" label="单位" width="80" />
-            <el-table-column prop="price" label="单价" width="120">
-              <template #default="{ row }">
-                ¥{{ row.price?.toFixed(2) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="数量" width="120">
-              <template #default="{ row }">
-                <el-input-number
-                  v-model="row.quantity"
-                  :min="1"
-                  :precision="0"
-                  style="width: 100%"
-                  @change="calculateItemAmount(row)"
-                />
-              </template>
-            </el-table-column>
-            <el-table-column prop="amount" label="金额" width="120">
-              <template #default="{ row }">
-                ¥{{ row.amount?.toFixed(2) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="80" align="center">
-              <template #default="{ $index }">
-                <el-button type="danger" link @click="removeItem($index)">
-                  删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <div style="margin-top: 10px">
-            <el-button type="primary" @click="addItem">
-              <el-icon><Plus /></el-icon>
-              添加项目
-            </el-button>
-          </div>
+        <el-form-item label="患者姓名" prop="patientName">
+          <el-input v-model="form.patientName" placeholder="请输入患者姓名" />
         </el-form-item>
-
-        <el-form-item label="备注" prop="remarks">
+        <el-form-item label="诊疗项目" prop="diagnosisId">
+          <el-select
+            v-model="form.diagnosisId"
+            filterable
+            remote
+            :remote-method="searchTreatments"
+            placeholder="请选择诊疗项目"
+            style="width: 100%"
+            @change="handleTreatmentChange"
+          >
+            <el-option
+              v-for="item in treatmentOptions"
+              :key="item.id"
+              :label="item.medicalName"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="项目编码">
+          <el-input v-model="form.medicalNumber" disabled />
+        </el-form-item>
+        <el-form-item label="项目类别">
+          <el-input v-model="form.medicalType" disabled />
+        </el-form-item>
+        <el-form-item label="计价单位">
+          <el-input v-model="form.medicalUnit" disabled />
+        </el-form-item>
+        <el-form-item label="价格">
+          <el-input v-model="form.medicalPrice" disabled>
+            <template #append>元</template>
+          </el-input>
+        </el-form-item>
+        <el-form-item label="用法" prop="useMethod">
+          <el-input v-model="form.useMethod" placeholder="请输入用法" />
+        </el-form-item>
+        <el-form-item label="开立时间" prop="orderTime">
+          <el-date-picker
+            v-model="form.orderTime"
+            type="datetime"
+            placeholder="请选择开立时间"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="医嘱内容" prop="doctorOrder">
           <el-input
-            v-model="form.remarks"
+            v-model="form.doctorOrder"
             type="textarea"
             rows="3"
-            placeholder="请输入备注"
+            placeholder="请输入医嘱内容"
           />
         </el-form-item>
       </el-form>
@@ -262,49 +203,16 @@
 import { ref, reactive, computed } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { request } from '@/utils/request'
+import { treatmentApi } from '@/api/doctor'
+import { treatmentApi as insuranceTreatmentApi } from '@/api/insurance'
+import type { PatientTreatmentVO } from '@/types/doctor'
+import type { TreatmentVO } from '@/types/insurance'
 import dayjs from 'dayjs'
-
-// 接口定义
-interface Treatment {
-  id: number
-  projectName: string
-  specification: string
-  unit: string
-  price: number
-}
-
-interface TreatmentItem {
-  id?: number
-  treatmentId: number
-  projectName?: string
-  specification?: string
-  unit?: string
-  price?: number
-  quantity: number
-  amount?: number
-}
-
-interface TreatmentRecord {
-  id: number
-  patientName: string
-  visitNumber: string
-  treatmentDate: string
-  diagnosis: string
-  doctorName: string
-  department: string
-  totalAmount: number
-  status: number
-  items: TreatmentItem[]
-  remarks?: string
-  createTime: string
-  updateTime: string
-}
 
 // 搜索表单
 const searchForm = reactive({
   patientName: '',
-  visitNumber: '',
+  treatmentName: '',
   treatmentDate: [] as string[]
 })
 
@@ -317,23 +225,23 @@ const pagination = reactive({
 
 // 表格数据
 const loading = ref(false)
-const tableData = ref<TreatmentRecord[]>([])
+const tableData = ref<PatientTreatmentVO[]>([])
 
 // 项目选项
-const treatmentOptions = ref<Treatment[]>([])
+const treatmentOptions = ref<TreatmentVO[]>([])
 
 // 表单数据
 const dialogVisible = ref(false)
 const dialogType = ref<'add' | 'edit' | 'view'>('add')
 const formRef = ref<FormInstance>()
-const form = reactive<Partial<TreatmentRecord>>({
+const form = reactive<Partial<PatientTreatmentVO>>({
   patientName: '',
-  visitNumber: '',
-  treatmentDate: '',
-  diagnosis: '',
-  department: '',
-  items: [],
-  remarks: ''
+  patientId: undefined,
+  diagnosisId: undefined,
+  doctorOrder: '',
+  useMethod: '',
+  orderTime: '',
+  status: 1
 })
 
 // 表单校验规则
@@ -342,20 +250,14 @@ const rules: FormRules = {
     { required: true, message: '请输入患者姓名', trigger: 'blur' },
     { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
   ],
-  visitNumber: [
-    { required: true, message: '请输入就诊号', trigger: 'blur' }
+  diagnosisId: [
+    { required: true, message: '请选择诊疗项目', trigger: 'change' }
   ],
-  treatmentDate: [
-    { required: true, message: '请选择开具日期', trigger: 'change' }
+  useMethod: [
+    { required: true, message: '请输入用法', trigger: 'blur' }
   ],
-  department: [
-    { required: true, message: '请选择科室', trigger: 'change' }
-  ],
-  diagnosis: [
-    { required: true, message: '请输入诊断信息', trigger: 'blur' }
-  ],
-  items: [
-    { required: true, message: '请添加服务项目', trigger: 'change' }
+  orderTime: [
+    { required: true, message: '请选择开立时间', trigger: 'change' }
   ]
 }
 
@@ -363,14 +265,14 @@ const rules: FormRules = {
 const fetchTreatmentRecords = async () => {
   loading.value = true
   try {
-    const { list, total } = await request.get<{ list: TreatmentRecord[], total: number }>('/api/doctor/treatment', {
+    const { data } = await treatmentApi.getPage({
       ...searchForm,
       ...pagination,
       startDate: searchForm.treatmentDate?.[0],
       endDate: searchForm.treatmentDate?.[1]
     })
-    tableData.value = list
-    pagination.total = total
+    tableData.value = data.list
+    pagination.total = data.total
   } catch (error) {
     console.error('获取医疗服务项目列表失败:', error)
   } finally {
@@ -382,10 +284,8 @@ const fetchTreatmentRecords = async () => {
 const searchTreatments = async (query: string) => {
   if (query) {
     try {
-      const { list } = await request.get<{ list: Treatment[] }>('/api/insurance/treatments/search', {
-        projectName: query
-      })
-      treatmentOptions.value = list
+      const { data } = await insuranceTreatmentApi.search(query)
+      treatmentOptions.value = data
     } catch (error) {
       console.error('搜索项目失败:', error)
     }
@@ -395,38 +295,20 @@ const searchTreatments = async (query: string) => {
 }
 
 // 处理项目选择变化
-const handleTreatmentChange = (treatmentId: number, row: TreatmentItem) => {
+const handleTreatmentChange = (treatmentId: number) => {
   const treatment = treatmentOptions.value.find(item => item.id === treatmentId)
   if (treatment) {
-    row.projectName = treatment.projectName
-    row.specification = treatment.specification
-    row.unit = treatment.unit
-    row.price = treatment.price
-    calculateItemAmount(row)
+    Object.assign(form, {
+      diagnosisId: treatment.id,
+      medicalName: treatment.medicalName,
+      medicalNumber: treatment.medicalNumber,
+      medicalType: treatment.medicalType,
+      medicalUnit: treatment.medicalUnit,
+      medicalPrice: treatment.medicalPrice,
+      medicalInfo: treatment.medicalInfo,
+      medicalExclude: treatment.medicalExclude
+    })
   }
-}
-
-// 计算项目金额
-const calculateItemAmount = (row: TreatmentItem) => {
-  if (row.price && row.quantity) {
-    row.amount = row.price * row.quantity
-  }
-}
-
-// 添加项目
-const addItem = () => {
-  if (!form.items) {
-    form.items = []
-  }
-  form.items.push({
-    treatmentId: 0,
-    quantity: 1
-  })
-}
-
-// 移除项目
-const removeItem = (index: number) => {
-  form.items?.splice(index, 1)
 }
 
 // 处理查询
@@ -439,7 +321,7 @@ const handleSearch = () => {
 const resetSearch = () => {
   Object.assign(searchForm, {
     patientName: '',
-    visitNumber: '',
+    treatmentName: '',
     treatmentDate: []
   })
   handleSearch()
@@ -452,21 +334,31 @@ const handleAdd = () => {
 }
 
 // 处理编辑
-const handleEdit = (row: TreatmentRecord) => {
+const handleEdit = async (row: PatientTreatmentVO) => {
   dialogType.value = 'edit'
-  Object.assign(form, row)
-  dialogVisible.value = true
+  try {
+    const { data } = await treatmentApi.getById(row.id!)
+    Object.assign(form, data)
+    dialogVisible.value = true
+  } catch (error) {
+    console.error('获取医疗服务项目详情失败:', error)
+  }
 }
 
 // 处理查看
-const handleView = (row: TreatmentRecord) => {
+const handleView = async (row: PatientTreatmentVO) => {
   dialogType.value = 'view'
-  Object.assign(form, row)
-  dialogVisible.value = true
+  try {
+    const { data } = await treatmentApi.getById(row.id!)
+    Object.assign(form, data)
+    dialogVisible.value = true
+  } catch (error) {
+    console.error('获取医疗服务项目详情失败:', error)
+  }
 }
 
 // 处理删除
-const handleDelete = (row: TreatmentRecord) => {
+const handleDelete = (row: PatientTreatmentVO) => {
   ElMessageBox.confirm(
     `确认删除患者"${row.patientName}"的医疗服务项目记录吗？`,
     '警告',
@@ -477,7 +369,7 @@ const handleDelete = (row: TreatmentRecord) => {
     }
   ).then(async () => {
     try {
-      await request.delete(`/api/doctor/treatment/${row.id}`)
+      await treatmentApi.delete(row.id!)
       ElMessage.success('删除成功')
       fetchTreatmentRecords()
     } catch (error) {
@@ -494,10 +386,10 @@ const handleSubmit = async () => {
     if (valid) {
       try {
         if (dialogType.value === 'add') {
-          await request.post('/api/doctor/treatment', form)
+          await treatmentApi.add(form)
           ElMessage.success('新增成功')
         } else {
-          await request.put(`/api/doctor/treatment/${form.id}`, form)
+          await treatmentApi.update(form.id!, form)
           ElMessage.success('更新成功')
         }
         dialogVisible.value = false
@@ -516,12 +408,12 @@ const resetForm = () => {
   }
   Object.assign(form, {
     patientName: '',
-    visitNumber: '',
-    treatmentDate: '',
-    diagnosis: '',
-    department: '',
-    items: [],
-    remarks: ''
+    patientId: undefined,
+    diagnosisId: undefined,
+    doctorOrder: '',
+    useMethod: '',
+    orderTime: '',
+    status: 1
   })
 }
 
@@ -538,7 +430,7 @@ const handleCurrentChange = (val: number) => {
 
 // 格式化日期
 const formatDate = (date: string) => {
-  return dayjs(date).format('YYYY-MM-DD')
+  return dayjs(date).format('YYYY-MM-DD HH:mm:ss')
 }
 
 // 状态
@@ -546,10 +438,10 @@ const treatmentStatusType = (status: number) => {
   switch (status) {
     case 1:
       return 'success'
+    case 0:
+      return 'danger'
     case 2:
       return 'warning'
-    case 3:
-      return 'danger'
     default:
       return 'info'
   }
@@ -558,11 +450,11 @@ const treatmentStatusType = (status: number) => {
 const treatmentStatusText = (status: number) => {
   switch (status) {
     case 1:
-      return '已完成'
+      return '正常执行'
+    case 0:
+      return '已作废'
     case 2:
-      return '进行中'
-    case 3:
-      return '已取消'
+      return '已停止'
     default:
       return '未知'
   }
