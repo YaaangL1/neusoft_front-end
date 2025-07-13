@@ -6,22 +6,13 @@
           <el-card shadow="hover" class="statistics-card">
             <template #header>
               <div class="card-header">
-                <span>今日报销申请</span>
+              <span>报销申请总数</span>
                 <el-tag size="small" type="success">实时</el-tag>
               </div>
             </template>
             <div class="statistics-value">
-              <span class="number">{{ statistics.todayApplications }}</span>
+            <span class="number">{{ statistics.totalCount }}</span>
               <span class="unit">件</span>
-            </div>
-            <div class="statistics-compare">
-              较昨日
-              <span :class="statistics.applicationGrowth >= 0 ? 'up' : 'down'">
-                {{ Math.abs(statistics.applicationGrowth) }}%
-                <el-icon>
-                  <component :is="statistics.applicationGrowth >= 0 ? 'ArrowUp' : 'ArrowDown'" />
-                </el-icon>
-              </span>
             </div>
           </el-card>
         </el-col>
@@ -30,22 +21,13 @@
           <el-card shadow="hover" class="statistics-card">
             <template #header>
               <div class="card-header">
-                <span>今日报销金额</span>
+              <span>报销总金额</span>
                 <el-tag size="small" type="warning">实时</el-tag>
               </div>
             </template>
             <div class="statistics-value">
-              <span class="number">{{ formatMoney(statistics.todayAmount) }}</span>
+            <span class="number">{{ formatMoney(statistics.totalAmount) }}</span>
               <span class="unit">元</span>
-            </div>
-            <div class="statistics-compare">
-              较昨日
-              <span :class="statistics.amountGrowth >= 0 ? 'up' : 'down'">
-                {{ Math.abs(statistics.amountGrowth) }}%
-                <el-icon>
-                  <component :is="statistics.amountGrowth >= 0 ? 'ArrowUp' : 'ArrowDown'" />
-                </el-icon>
-              </span>
             </div>
           </el-card>
         </el-col>
@@ -54,22 +36,13 @@
           <el-card shadow="hover" class="statistics-card">
             <template #header>
               <div class="card-header">
-                <span>待审核申请</span>
-                <el-tag size="small" type="danger">待处理</el-tag>
+              <span>药品报销金额</span>
+              <el-tag size="small" type="danger">实时</el-tag>
               </div>
             </template>
             <div class="statistics-value">
-              <span class="number">{{ statistics.pendingReviews }}</span>
-              <span class="unit">件</span>
-            </div>
-            <div class="statistics-compare">
-              较昨日
-              <span :class="statistics.reviewGrowth >= 0 ? 'up' : 'down'">
-                {{ Math.abs(statistics.reviewGrowth) }}%
-                <el-icon>
-                  <component :is="statistics.reviewGrowth >= 0 ? 'ArrowUp' : 'ArrowDown'" />
-                </el-icon>
-              </span>
+            <span class="number">{{ formatMoney(statistics.drugAmount) }}</span>
+            <span class="unit">元</span>
             </div>
           </el-card>
         </el-col>
@@ -78,22 +51,13 @@
           <el-card shadow="hover" class="statistics-card">
             <template #header>
               <div class="card-header">
-                <span>本月累计报销</span>
-                <el-tag size="small" type="info">月度</el-tag>
+              <span>诊疗报销金额</span>
+              <el-tag size="small" type="info">实时</el-tag>
               </div>
             </template>
             <div class="statistics-value">
-              <span class="number">{{ formatMoney(statistics.monthlyAmount) }}</span>
+            <span class="number">{{ formatMoney(statistics.treatmentAmount) }}</span>
               <span class="unit">元</span>
-            </div>
-            <div class="statistics-compare">
-              较上月
-              <span :class="statistics.monthlyGrowth >= 0 ? 'up' : 'down'">
-                {{ Math.abs(statistics.monthlyGrowth) }}%
-                <el-icon>
-                  <component :is="statistics.monthlyGrowth >= 0 ? 'ArrowUp' : 'ArrowDown'" />
-                </el-icon>
-              </span>
             </div>
           </el-card>
         </el-col>
@@ -107,9 +71,9 @@
               <div class="card-header">
                 <span>报销金额趋势</span>
                 <el-radio-group v-model="timeRange" size="small">
-                  <el-radio-button label="week">本周</el-radio-button>
-                  <el-radio-button label="month">本月</el-radio-button>
-                  <el-radio-button label="year">本年</el-radio-button>
+                <el-radio-button value="week">本周</el-radio-button>
+                <el-radio-button value="month">本月</el-radio-button>
+                <el-radio-button value="year">本年</el-radio-button>
                 </el-radio-group>
               </div>
             </template>
@@ -140,10 +104,11 @@
           <el-timeline-item
             v-for="activity in activities"
             :key="activity.id"
-            :timestamp="activity.time"
+          :timestamp="activity.createdTime"
             :type="activity.type"
           >
-            {{ activity.content }}
+          <h4>{{ activity.title }}</h4>
+          <p>{{ activity.content }}</p>
           </el-timeline-item>
         </el-timeline>
       </el-card>
@@ -151,42 +116,23 @@
   </template>
   
   <script setup lang="ts">
-  import { ref, onMounted, onUnmounted } from 'vue'
-  import { request } from '@/utils/request'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
   import * as echarts from 'echarts'
+import { dashboardApi } from '@/api/dashboard'
+import type { DashboardStatistics, DashboardActivity } from '@/api/dashboard'
   
-  // 统计数据接口
-  interface Statistics {
-    todayApplications: number
-    applicationGrowth: number
-    todayAmount: number
-    amountGrowth: number
-    pendingReviews: number
-    reviewGrowth: number
-    monthlyAmount: number
-    monthlyGrowth: number
-  }
-  
-  // 活动记录接口
-  interface Activity {
-    id: number
-    content: string
-    time: string
-    type: 'primary' | 'success' | 'warning' | 'danger' | 'info'
-  }
-  
-  const statistics = ref<Statistics>({
-    todayApplications: 0,
-    applicationGrowth: 0,
-    todayAmount: 0,
-    amountGrowth: 0,
-    pendingReviews: 0,
-    reviewGrowth: 0,
-    monthlyAmount: 0,
-    monthlyGrowth: 0
+const statistics = ref<DashboardStatistics>({
+  totalAmount: 0,
+  totalCount: 0,
+  drugAmount: 0,
+  drugCount: 0,
+  treatmentAmount: 0,
+  treatmentCount: 0,
+  serviceAmount: 0,
+  serviceCount: 0
   })
   
-  const activities = ref<Activity[]>([])
+const activities = ref<DashboardActivity[]>([])
   const timeRange = ref('week')
   const amountChartRef = ref<HTMLElement>()
   const typeChartRef = ref<HTMLElement>()
@@ -204,7 +150,7 @@
   // 获取统计数据
   const fetchStatistics = async () => {
     try {
-      const data = await request.get<Statistics>('/dashboard/statistics')
+    const { data } = await dashboardApi.getStatistics(timeRange.value)
       statistics.value = data
     } catch (error) {
       console.error('获取统计数据失败:', error)
@@ -214,7 +160,7 @@
   // 获取活动记录
   const fetchActivities = async () => {
     try {
-      const data = await request.get<Activity[]>('/dashboard/activities')
+    const { data } = await dashboardApi.getActivities()
       activities.value = data
     } catch (error) {
       console.error('获取活动记录失败:', error)
@@ -248,8 +194,7 @@
         {
           name: '报销金额',
           type: 'line',
-          smooth: true,
-          data: [10000, 15000, 12000, 18000, 14000, 16000, 13000]
+        data: [150, 230, 224, 218, 135, 147, 260]
         }
       ]
     }
@@ -276,10 +221,9 @@
           type: 'pie',
           radius: '50%',
           data: [
-            { value: 1048, name: '门诊' },
-            { value: 735, name: '住院' },
-            { value: 580, name: '药品' },
-            { value: 484, name: '检查' }
+          { value: statistics.value.drugAmount, name: '药品费用' },
+          { value: statistics.value.treatmentAmount, name: '诊疗费用' },
+          { value: statistics.value.serviceAmount, name: '医疗服务' }
           ],
           emphasis: {
             itemStyle: {
@@ -295,24 +239,30 @@
     typeChart.setOption(option)
   }
   
-  // 监听窗口大小变化
-  const handleResize = () => {
-    amountChart?.resize()
-    typeChart?.resize()
-  }
+// 监听时间范围变化
+watch(timeRange, () => {
+  fetchStatistics()
+})
   
   onMounted(() => {
     fetchStatistics()
     fetchActivities()
     initAmountChart()
     initTypeChart()
-    window.addEventListener('resize', handleResize)
+  
+  window.addEventListener('resize', () => {
+    amountChart?.resize()
+    typeChart?.resize()
+  })
   })
   
   onUnmounted(() => {
-    window.removeEventListener('resize', handleResize)
     amountChart?.dispose()
     typeChart?.dispose()
+  window.removeEventListener('resize', () => {
+    amountChart?.resize()
+    typeChart?.resize()
+  })
   })
   </script>
   
@@ -322,6 +272,9 @@
   }
   
   .statistics-card {
+  margin-bottom: 20px;
+}
+
     .card-header {
       display: flex;
       justify-content: space-between;
@@ -331,37 +284,22 @@
     .statistics-value {
       text-align: center;
       margin: 20px 0;
+}
   
-      .number {
+.statistics-value .number {
         font-size: 24px;
         font-weight: bold;
         color: #303133;
       }
   
-      .unit {
-        margin-left: 4px;
+.statistics-value .unit {
         font-size: 14px;
         color: #909399;
-      }
-    }
-  
-    .statistics-compare {
-      text-align: center;
-      font-size: 14px;
-      color: #909399;
-  
-      .up {
-        color: #67c23a;
-      }
-  
-      .down {
-        color: #f56c6c;
-      }
-    }
+  margin-left: 5px;
   }
   
   .chart-row {
-    margin-top: 20px;
+  margin-bottom: 20px;
   }
   
   .chart {
@@ -369,6 +307,16 @@
   }
   
   .activity-card {
-    margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+:deep(.el-timeline-item__content) h4 {
+  color: #303133;
+  margin: 0 0 8px;
+}
+
+:deep(.el-timeline-item__content) p {
+  color: #606266;
+  margin: 0;
   }
   </style>

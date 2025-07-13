@@ -65,39 +65,44 @@
           </el-card>
         </el-tab-pane>
   
-        <!-- 诊疗项目报销比例 -->
-        <el-tab-pane label="诊疗项目报销比例" name="treatment">
+        <!-- 不同级别医院报销比例 -->
+        <el-tab-pane label="不同级别医院报销比例" name="hospital">
           <el-card>
             <template #header>
               <div class="card-header">
-                <span>诊疗项目报销比例设置</span>
+                <span>不同级别医院报销比例设置</span>
                 <el-button type="primary" @click="handleAddTreatmentRatio">
                   <el-icon><Plus /></el-icon>
                   新增配置
                 </el-button>
               </div>
             </template>
-  
+
             <el-table :data="treatmentRatios" border stripe>
               <el-table-column type="index" label="序号" width="60" align="center" />
-              <el-table-column prop="treatmentType" label="项目类型" width="120">
-                <template #default="{ row }">
-                  <el-tag>{{ row.treatmentType }}</el-tag>
-                </template>
-              </el-table-column>
               <el-table-column prop="hospitalLevel" label="医院等级" width="120">
                 <template #default="{ row }">
                   <el-tag type="info">{{ row.hospitalLevel }}</el-tag>
                 </template>
               </el-table-column>
+              <el-table-column prop="peopleType" label="人员类别" width="120">
+                <template #default="{ row }">
+                  <el-tag>{{ row.peopleType === '1' ? '在职' : '退休' }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="minPayLevel" label="最低缴费档次" width="120">
+                <template #default="{ row }">
+                  {{ row.minPayLevel }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="maxPayLevel" label="最高缴费档次" width="120">
+                <template #default="{ row }">
+                  {{ row.maxPayLevel }}
+                </template>
+              </el-table-column>
               <el-table-column prop="ratio" label="报销比例" width="120">
                 <template #default="{ row }">
                   {{ row.ratio }}%
-                </template>
-              </el-table-column>
-              <el-table-column prop="maxAmount" label="最高限额" width="150">
-                <template #default="{ row }">
-                  {{ formatPrice(row.maxAmount) }}
                 </template>
               </el-table-column>
               <el-table-column prop="remarks" label="备注" min-width="200" show-overflow-tooltip />
@@ -192,10 +197,10 @@
         </template>
       </el-dialog>
   
-      <!-- 诊疗项目报销比例配置对话框 -->
+      <!-- 不同级别医院报销比例配置对话框 -->
       <el-dialog
         v-model="treatmentRatioDialog.visible"
-        :title="treatmentRatioDialog.type === 'add' ? '新增诊疗项目报销比例' : '编辑诊疗项目报销比例'"
+        :title="treatmentRatioDialog.type === 'add' ? '新增医院报销比例' : '编辑医院报销比例'"
         width="500px"
         @close="resetTreatmentRatioForm"
       >
@@ -205,9 +210,6 @@
           :rules="treatmentRatioRules"
           label-width="100px"
         >
-          <el-form-item label="项目类型" prop="treatmentType">
-            <el-input v-model="treatmentRatioForm.treatmentType" placeholder="请输入项目类型" />
-          </el-form-item>
           <el-form-item label="医院等级" prop="hospitalLevel">
             <el-select v-model="treatmentRatioForm.hospitalLevel" placeholder="请选择医院等级">
               <el-option label="三级医院" value="三级医院" />
@@ -216,21 +218,24 @@
               <el-option label="社区医院" value="社区医院" />
             </el-select>
           </el-form-item>
+          <el-form-item label="人员类别" prop="peopleType">
+            <el-select v-model="treatmentRatioForm.peopleType" placeholder="请选择人员类别">
+              <el-option label="在职" value="1" />
+              <el-option label="退休" value="0" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="最低缴费档次" prop="minPayLevel">
+            <el-input v-model="treatmentRatioForm.minPayLevel" placeholder="请输入最低缴费档次" />
+          </el-form-item>
+          <el-form-item label="最高缴费档次" prop="maxPayLevel">
+            <el-input v-model="treatmentRatioForm.maxPayLevel" placeholder="请输入最高缴费档次" />
+          </el-form-item>
           <el-form-item label="报销比例" prop="ratio">
             <el-input-number
               v-model="treatmentRatioForm.ratio"
               :min="0"
               :max="100"
               :precision="0"
-              style="width: 100%"
-            />
-          </el-form-item>
-          <el-form-item label="最高限额" prop="maxAmount">
-            <el-input-number
-              v-model="treatmentRatioForm.maxAmount"
-              :min="0"
-              :precision="2"
-              :step="100"
               style="width: 100%"
             />
           </el-form-item>
@@ -245,7 +250,7 @@
         <template #footer>
           <span class="dialog-footer">
             <el-button @click="treatmentRatioDialog.visible = false">取消</el-button>
-            <el-button type="primary" @click="submitTreatmentRatio">
+            <el-button type="primary" @click="handleTreatmentRatioSubmit(treatmentRatioFormRef)">
               确定
             </el-button>
           </span>
@@ -255,10 +260,12 @@
   </template>
   
   <script setup lang="ts">
-  import { ref, reactive } from 'vue'
+  import { ref, reactive, onMounted } from 'vue'
   import type { FormInstance, FormRules } from 'element-plus'
   import { ElMessage, ElMessageBox } from 'element-plus'
-  import { request } from '@/utils/request'
+  import { Plus } from '@element-plus/icons-vue'
+  import { ratioApi } from '@/api/insurance'
+  import type { DrugReimbursementVO, HospitalReimbursementVO } from '@/types/insurance'
   
   // 接口定义
   interface RatioBase {
@@ -280,8 +287,8 @@
   
   // 状态定义
   const activeTab = ref('drug')
-  const drugRatios = ref<DrugRatio[]>([])
-  const treatmentRatios = ref<TreatmentRatio[]>([])
+  const drugRatios = ref<DrugReimbursementVO[]>([])
+  const treatmentRatios = ref<DrugReimbursementVO[]>([])
   
   // 药品报销比例表单
   const drugRatioDialog = reactive({
@@ -320,45 +327,74 @@
   })
   
   const treatmentRatioFormRef = ref<FormInstance>()
-  const treatmentRatioForm = reactive<Partial<TreatmentRatio>>({
-    treatmentType: '',
+  const treatmentRatioForm = reactive<HospitalReimbursementVO>({
     hospitalLevel: '',
+    peopleType: '',
+    minPayLevel: '',
+    maxPayLevel: '',
     ratio: 0,
-    maxAmount: 0,
-    remarks: ''
+    remarks: '',
+    status: 1
   })
   
-  const treatmentRatioRules: FormRules = {
-    treatmentType: [
-      { required: true, message: '请输入项目类型', trigger: 'blur' }
-    ],
-    hospitalLevel: [
-      { required: true, message: '请选择医院等级', trigger: 'change' }
-    ],
-    ratio: [
-      { required: true, message: '请输入报销比例', trigger: 'blur' }
-    ],
-    maxAmount: [
-      { required: true, message: '请输入最高限额', trigger: 'blur' }
-    ]
+  // 表单校验规则
+  const treatmentRatioRules = {
+    hospitalLevel: [{ required: true, message: '请选择医院等级', trigger: 'change' }],
+    peopleType: [{ required: true, message: '请选择人员类别', trigger: 'change' }],
+    minPayLevel: [{ required: true, message: '请输入最低缴费档次', trigger: 'blur' }],
+    maxPayLevel: [{ required: true, message: '请输入最高缴费档次', trigger: 'blur' }],
+    ratio: [{ required: true, message: '请输入报销比例', trigger: 'change' }]
   }
   
-  // 获取数据
+  // 重置表单
+  const resetTreatmentRatioForm = () => {
+    if (treatmentRatioFormRef.value) {
+      treatmentRatioFormRef.value.resetFields()
+    }
+    Object.assign(treatmentRatioForm, {
+      id: undefined,
+      hospitalLevel: '',
+      peopleType: '',
+      minPayLevel: '',
+      maxPayLevel: '',
+      ratio: 0,
+      remarks: '',
+      status: 1
+    })
+  }
+  
+  // 获取药品报销比例列表
   const fetchDrugRatios = async () => {
     try {
-      const data = await request.get<DrugRatio[]>('/api/insurance/ratios/drugs')
-      drugRatios.value = data
-    } catch (error) {
+      const res = await ratioApi.getDrugRatios()
+      if (res.code === 200) {
+        drugRatios.value = res.data
+      } else {
+        ElMessage.error(res.message || '获取药品报销比例失败')
+      }
+    } catch (error: any) {
       console.error('获取药品报销比例失败:', error)
+      ElMessage.error(error.message || '获取药品报销比例失败')
     }
   }
   
-  const fetchTreatmentRatios = async () => {
+  // 获取医院报销比例列表
+  const getTreatmentRatios = async () => {
     try {
-      const data = await request.get<TreatmentRatio[]>('/api/insurance/ratios/treatments')
-      treatmentRatios.value = data
+      const [level1, level2, level3] = await Promise.all([
+        ratioApi.getHospitalRatios(1, '1'), // 获取一级医院在职人员报销比例
+        ratioApi.getHospitalRatios(2, '1'), // 获取二级医院在职人员报销比例
+        ratioApi.getHospitalRatios(3, '1')  // 获取三级医院在职人员报销比例
+      ])
+      if (level1.data && level2.data && level3.data) {
+        treatmentRatios.value = [
+          ...level1.data.map(item => ({ ...item, hospitalLevel: '一级医院' })),
+          ...level2.data.map(item => ({ ...item, hospitalLevel: '二级医院' })),
+          ...level3.data.map(item => ({ ...item, hospitalLevel: '三级医院' }))
+        ]
+      }
     } catch (error) {
-      console.error('获取诊疗项目报销比例失败:', error)
+      console.error('获取医院报销比例列表失败:', error)
     }
   }
   
@@ -368,15 +404,15 @@
     drugRatioDialog.visible = true
   }
   
-  const handleEditDrugRatio = (row: DrugRatio) => {
+  const handleEditDrugRatio = (row: DrugReimbursementVO) => {
     drugRatioDialog.type = 'edit'
     Object.assign(drugRatioForm, row)
     drugRatioDialog.visible = true
   }
   
-  const handleDeleteDrugRatio = (row: DrugRatio) => {
+  const handleDeleteDrugRatio = async (row: DrugReimbursementVO) => {
     ElMessageBox.confirm(
-      '确认删除该报销比例配置吗？',
+      `确认删除药品报销比例"${row.drugReimbursementType}"吗？`,
       '警告',
       {
         confirmButtonText: '确定',
@@ -385,24 +421,25 @@
       }
     ).then(async () => {
       try {
-        await request.delete(`/api/insurance/ratios/drugs/${row.id}`)
+        await ratioApi.deleteDrugRatio(row.id!)
         ElMessage.success('删除成功')
         fetchDrugRatios()
-      } catch (error) {
+      } catch (error: any) {
         console.error('删除失败:', error)
+        ElMessage.error(error.message || '删除失败')
       }
     })
   }
   
-  const handleDrugRatioStatusChange = async (row: DrugRatio) => {
+  const handleDrugRatioStatusChange = async (row: DrugReimbursementVO) => {
     try {
-      await request.put(`/api/insurance/ratios/drugs/${row.id}/status`, {
+      await ratioApi.updateDrugRatioStatus(row.id!, {
         status: row.status
       })
       ElMessage.success('状态更新成功')
-    } catch (error) {
+    } catch (error: any) {
       console.error('状态更新失败:', error)
-      row.status = row.status === 1 ? 0 : 1
+      ElMessage.error(error.message || '状态更新失败')
     }
   }
   
@@ -413,16 +450,17 @@
       if (valid) {
         try {
           if (drugRatioDialog.type === 'add') {
-            await request.post('/api/insurance/ratios/drugs', drugRatioForm)
+            await ratioApi.addDrugRatio(drugRatioForm)
             ElMessage.success('新增成功')
           } else {
-            await request.put(`/api/insurance/ratios/drugs/${drugRatioForm.id}`, drugRatioForm)
+            await ratioApi.updateDrugRatio(drugRatioForm.id!, drugRatioForm)
             ElMessage.success('更新成功')
           }
           drugRatioDialog.visible = false
           fetchDrugRatios()
-        } catch (error) {
+        } catch (error: any) {
           console.error('保存失败:', error)
+          ElMessage.error(error.message || '保存失败')
         }
       }
     })
@@ -447,81 +485,75 @@
     treatmentRatioDialog.visible = true
   }
   
-  const handleEditTreatmentRatio = (row: TreatmentRatio) => {
+  const handleEditTreatmentRatio = (row: DrugReimbursementVO) => {
     treatmentRatioDialog.type = 'edit'
     Object.assign(treatmentRatioForm, row)
     treatmentRatioDialog.visible = true
   }
   
-  const handleDeleteTreatmentRatio = (row: TreatmentRatio) => {
-    ElMessageBox.confirm(
-      '确认删除该报销比例配置吗？',
-      '警告',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    ).then(async () => {
+  // 处理医院报销比例状态变更
+  const handleTreatmentRatioStatusChange = async (row: HospitalReimbursementVO) => {
+    try {
+      const level = row.hospitalLevel === '一级医院' ? 1 : row.hospitalLevel === '二级医院' ? 2 : 3
+      await ratioApi.updateHospitalRatio(level, row.id!, { status: row.status })
+      ElMessage.success('状态更新成功')
+    } catch (error) {
+      console.error('更新状态失败:', error)
+      row.status = row.status === 1 ? 0 : 1 // 恢复状态
+      ElMessage.error('状态更新失败')
+    }
+  }
+  
+  // 处理医院报销比例删除
+  const handleDeleteTreatmentRatio = (row: HospitalReimbursementVO) => {
+    ElMessageBox.confirm('确认删除该报销比例配置?', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }).then(async () => {
       try {
-        await request.delete(`/api/insurance/ratios/treatments/${row.id}`)
+        const level = row.hospitalLevel === '一级医院' ? 1 : row.hospitalLevel === '二级医院' ? 2 : 3
+        await ratioApi.deleteHospitalRatio(level, row.id!)
         ElMessage.success('删除成功')
-        fetchTreatmentRatios()
+        getTreatmentRatios()
       } catch (error) {
         console.error('删除失败:', error)
+        ElMessage.error('删除失败')
       }
     })
   }
   
-  const handleTreatmentRatioStatusChange = async (row: TreatmentRatio) => {
-    try {
-      await request.put(`/api/insurance/ratios/treatments/${row.id}/status`, {
-        status: row.status
-      })
-      ElMessage.success('状态更新成功')
-    } catch (error) {
-      console.error('状态更新失败:', error)
-      row.status = row.status === 1 ? 0 : 1
-    }
-  }
-  
-  const submitTreatmentRatio = async () => {
-    if (!treatmentRatioFormRef.value) return
-  
-    await treatmentRatioFormRef.value.validate(async (valid) => {
+  // 处理医院报销比例表单提交
+  const handleTreatmentRatioSubmit = async (formEl: FormInstance | undefined) => {
+    if (!formEl) return
+    await formEl.validate(async (valid) => {
       if (valid) {
         try {
+          const level = treatmentRatioForm.hospitalLevel === '一级医院' ? 1 : 
+                       treatmentRatioForm.hospitalLevel === '二级医院' ? 2 : 3
           if (treatmentRatioDialog.type === 'add') {
-            await request.post('/api/insurance/ratios/treatments', treatmentRatioForm)
+            await ratioApi.addHospitalRatio(level, treatmentRatioForm)
             ElMessage.success('新增成功')
           } else {
-            await request.put(`/api/insurance/ratios/treatments/${treatmentRatioForm.id}`, treatmentRatioForm)
+            await ratioApi.updateHospitalRatio(level, treatmentRatioForm.id!, treatmentRatioForm)
             ElMessage.success('更新成功')
           }
           treatmentRatioDialog.visible = false
-          fetchTreatmentRatios()
+          getTreatmentRatios()
         } catch (error) {
           console.error('保存失败:', error)
+          ElMessage.error('保存失败')
         }
       }
     })
   }
   
-  const resetTreatmentRatioForm = () => {
-    if (treatmentRatioFormRef.value) {
-      treatmentRatioFormRef.value.resetFields()
-    }
-    Object.assign(treatmentRatioForm, {
-      treatmentType: '',
-      hospitalLevel: '',
-      ratio: 0,
-      maxAmount: 0,
-      remarks: ''
-    })
-  }
-  
   // 工具函数
-  const formatPrice = (price: number) => {
+  // 格式化价格
+  const formatPrice = (price?: number) => {
+    if (price === undefined || price === null) {
+      return '¥0.00'
+    }
     return price.toLocaleString('zh-CN', {
       style: 'currency',
       currency: 'CNY'
@@ -543,7 +575,7 @@
   
   // 初始化
   fetchDrugRatios()
-  fetchTreatmentRatios()
+  getTreatmentRatios()
   </script>
   
   <style scoped>

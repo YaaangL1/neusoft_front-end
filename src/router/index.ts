@@ -5,6 +5,12 @@ import { useUserStore } from '../stores/user'
 
 export const routes: RouteRecordRaw[] = [
   {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/login/index.vue'),
+    meta: { title: '登录', hidden: true }
+  },
+  {
     path: '/',
     component: Layout,
     redirect: '/dashboard',
@@ -113,23 +119,35 @@ const router = createRouter({
 })
 
 // 路由守卫
-// 测试阶段注释登录验证
-// router.beforeEach((to, from, next) => {
-//   const userStore = useUserStore()
+router.beforeEach(async (to, from, next) => {
+  const userStore = useUserStore()
   
-//   // 白名单路径直接放行
-//   if (['/login'].includes(to.path)) {
-//     next()
-//     return
-//   }
+  // 设置页面标题
+  document.title = `${to.meta.title} - ${import.meta.env.VITE_APP_TITLE || '医疗保险报销系统'}`
+  
+  // 白名单路径直接放行
+  if (['/login'].includes(to.path)) {
+    if (userStore.token && userStore.userInfo) {
+      next('/')
+      return
+    }
+    next()
+    return
+  }
 
-//   // 未登录跳转到登录页
-//   if (!userStore.token) {
-//     next(`/login?redirect=${to.path}`)
-//     return
-//   }
+  // 验证token
+  if (userStore.token) {
+    const isValid = await userStore.verifyToken()
+    if (!isValid) {
+    next(`/login?redirect=${to.path}`)
+      return
+    }
+    next()
+    return
+  }
 
-//   next()
-// })
+  // 未登录跳转到登录页
+  next(`/login?redirect=${to.path}`)
+})
 
 export default router

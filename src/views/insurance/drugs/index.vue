@@ -11,8 +11,8 @@
               @keyup.enter="handleSearch"
             />
           </el-form-item>
-          <el-form-item label="药品类别" prop="drugCategory">
-            <el-select v-model="searchForm.drugCategory" placeholder="请选择药品类别" clearable>
+          <el-form-item label="药品类别" prop="insuranceType">
+            <el-select v-model="searchForm.insuranceType" placeholder="请选择药品类别" clearable>
               <el-option label="甲类" value="甲类" />
               <el-option label="乙类" value="乙类" />
               <el-option label="丙类" value="丙类" />
@@ -52,31 +52,21 @@
           style="width: 100%"
         >
           <el-table-column type="index" label="序号" width="60" align="center" />
-          <el-table-column prop="drugName" label="药品名称" min-width="150" show-overflow-tooltip />
-          <el-table-column prop="brandName" label="商品名" min-width="150" show-overflow-tooltip />
-          <el-table-column prop="specification" label="规格" min-width="120" show-overflow-tooltip />
-          <el-table-column prop="unit" label="单位" width="80" align="center" />
-          <el-table-column prop="manufacturer" label="生产厂家" min-width="150" show-overflow-tooltip />
-          <el-table-column prop="drugCategory" label="药品类别" width="100" align="center">
+          <el-table-column prop="chinaName" label="药品名称" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="goodsName" label="商品名" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="specifications" label="规格" min-width="120" show-overflow-tooltip />
+          <el-table-column prop="drugUnit" label="单位" width="80" align="center" />
+          <el-table-column prop="drugManufacturer" label="生产厂家" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="insuranceType" label="药品类别" width="100" align="center">
             <template #default="{ row }">
-              <el-tag :type="drugCategoryType(row.drugCategory)">
-                {{ row.drugCategory }}
+              <el-tag :type="drugCategoryType(row.insuranceType)">
+                {{ row.insuranceType }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="price" label="单价" width="100" align="right">
+          <el-table-column prop="drugPrice" label="单价" width="100" align="right">
             <template #default="{ row }">
-              {{ formatPrice(row.price) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="status" label="状态" width="80" align="center">
-            <template #default="{ row }">
-              <el-switch
-                v-model="row.status"
-                :active-value="1"
-                :inactive-value="0"
-                @change="handleStatusChange(row)"
-              />
+              {{ formatPrice(row.drugPrice) }}
             </template>
           </el-table-column>
           <el-table-column label="操作" width="150" align="center" fixed="right">
@@ -120,31 +110,31 @@
           :rules="rules"
           label-width="100px"
         >
-          <el-form-item label="药品名称" prop="drugName">
-            <el-input v-model="form.drugName" placeholder="请输入药品名称" />
+          <el-form-item label="药品名称" prop="chinaName">
+            <el-input v-model="form.chinaName" placeholder="请输入药品名称" />
           </el-form-item>
-          <el-form-item label="商品名" prop="brandName">
-            <el-input v-model="form.brandName" placeholder="请输入商品名" />
+          <el-form-item label="商品名" prop="goodsName">
+            <el-input v-model="form.goodsName" placeholder="请输入商品名" />
           </el-form-item>
-          <el-form-item label="规格" prop="specification">
-            <el-input v-model="form.specification" placeholder="请输入规格" />
+          <el-form-item label="规格" prop="specifications">
+            <el-input v-model="form.specifications" placeholder="请输入规格" />
           </el-form-item>
-          <el-form-item label="单位" prop="unit">
-            <el-input v-model="form.unit" placeholder="请输入单位" />
+          <el-form-item label="单位" prop="drugUnit">
+            <el-input v-model="form.drugUnit" placeholder="请输入单位" />
           </el-form-item>
-          <el-form-item label="生产厂家" prop="manufacturer">
-            <el-input v-model="form.manufacturer" placeholder="请输入生产厂家" />
+          <el-form-item label="生产厂家" prop="drugManufacturer">
+            <el-input v-model="form.drugManufacturer" placeholder="请输入生产厂家" />
           </el-form-item>
-          <el-form-item label="药品类别" prop="drugCategory">
-            <el-select v-model="form.drugCategory" placeholder="请选择药品类别">
+          <el-form-item label="药品类别" prop="insuranceType">
+            <el-select v-model="form.insuranceType" placeholder="请选择药品类别">
               <el-option label="甲类" value="甲类" />
               <el-option label="乙类" value="乙类" />
               <el-option label="丙类" value="丙类" />
             </el-select>
           </el-form-item>
-          <el-form-item label="单价" prop="price">
+          <el-form-item label="单价" prop="drugPrice">
             <el-input-number
-              v-model="form.price"
+              v-model="form.drugPrice"
               :precision="2"
               :step="0.1"
               :min="0"
@@ -175,13 +165,13 @@
   import { ref, reactive } from 'vue'
   import type { FormInstance, FormRules } from 'element-plus'
   import { ElMessage, ElMessageBox } from 'element-plus'
-  import { request } from '@/utils/request'
-  import type { Drug } from '@/types/insurance'
+  import type { DrugInfoVO } from '@/types/insurance'
+  import { drugApi } from '@/api/insurance'
   
   // 搜索表单
   const searchForm = reactive({
     drugName: '',
-    drugCategory: ''
+    insuranceType: ''
   })
   
   // 分页信息
@@ -193,36 +183,36 @@
   
   // 表格数据
   const loading = ref(false)
-  const tableData = ref<Drug[]>([])
+  const tableData = ref<DrugInfoVO[]>([])
   
   // 表单数据
   const dialogVisible = ref(false)
   const dialogType = ref<'add' | 'edit'>('add')
   const formRef = ref<FormInstance>()
-  const form = reactive<Partial<Drug>>({
-    drugName: '',
-    brandName: '',
-    specification: '',
-    unit: '',
-    manufacturer: '',
-    drugCategory: undefined,
-    price: 0,
+  const form = reactive<Partial<DrugInfoVO>>({
+    chinaName: '',
+    goodsName: '',
+    specifications: '',
+    drugUnit: '',
+    drugManufacturer: '',
+    insuranceType: undefined,
+    drugPrice: 0,
     remarks: ''
   })
   
   // 表单校验规则
   const rules: FormRules = {
-    drugName: [
+    chinaName: [
       { required: true, message: '请输入药品名称', trigger: 'blur' },
       { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
     ],
-    drugCategory: [
+    insuranceType: [
       { required: true, message: '请选择药品类别', trigger: 'change' }
     ],
-    unit: [
+    drugUnit: [
       { required: true, message: '请输入单位', trigger: 'blur' }
     ],
-    price: [
+    drugPrice: [
       { required: true, message: '请输入单价', trigger: 'blur' }
     ]
   }
@@ -231,14 +221,23 @@
   const fetchDrugs = async () => {
     loading.value = true
     try {
-      const { list, total } = await request.get<{ list: Drug[], total: number }>('/drugs', {
-        ...searchForm,
-        ...pagination
-      })
-      tableData.value = list
-      pagination.total = total
-    } catch (error) {
+      const params = {
+        pageNum: pagination.pageNum,
+        pageSize: pagination.pageSize,
+        drugName: searchForm.drugName,
+        insuranceType: searchForm.insuranceType
+      }
+      console.log('请求参数:', params)
+      const res = await drugApi.getPage(params)
+      if (res.code === 200) {
+        tableData.value = res.data.list
+        pagination.total = res.data.total
+      } else {
+        ElMessage.error(res.message || '获取药品列表失败')
+      }
+    } catch (error: any) {
       console.error('获取药品列表失败:', error)
+      ElMessage.error(error.message || '获取药品列表失败')
     } finally {
       loading.value = false
     }
@@ -254,7 +253,7 @@
   const resetSearch = () => {
     Object.assign(searchForm, {
       drugName: '',
-      drugCategory: ''
+      insuranceType: ''
     })
     handleSearch()
   }
@@ -266,16 +265,16 @@
   }
   
   // 处理编辑
-  const handleEdit = (row: Drug) => {
+  const handleEdit = (row: DrugInfoVO) => {
     dialogType.value = 'edit'
     Object.assign(form, row)
     dialogVisible.value = true
   }
   
   // 处理删除
-  const handleDelete = (row: Drug) => {
+  const handleDelete = (row: DrugInfoVO) => {
     ElMessageBox.confirm(
-      `确认删除药品"${row.drugName}"吗？`,
+      `确认删除药品"${row.chinaName}"吗？`,
       '警告',
       {
         confirmButtonText: '确定',
@@ -284,26 +283,13 @@
       }
     ).then(async () => {
       try {
-        await request.delete(`/api/drugs/${row.id}`)
+        await drugApi.delete([row.id])
         ElMessage.success('删除成功')
         fetchDrugs()
       } catch (error) {
         console.error('删除失败:', error)
       }
     })
-  }
-  
-  // 处理状态变更
-  const handleStatusChange = async (row: Drug) => {
-    try {
-      await request.put(`/api/drugs/${row.id}/status`, {
-        status: row.status
-      })
-      ElMessage.success('状态更新成功')
-    } catch (error) {
-      console.error('状态更新失败:', error)
-      row.status = row.status === 1 ? 0 : 1
-    }
   }
   
   // 处理表单提交
@@ -314,10 +300,10 @@
       if (valid) {
         try {
           if (dialogType.value === 'add') {
-            await request.post('/api/drugs', form)
+            await drugApi.add(form)
             ElMessage.success('新增成功')
           } else {
-            await request.put(`/api/drugs/${form.id}`, form)
+            await drugApi.update(form.id!, form)
             ElMessage.success('更新成功')
           }
           dialogVisible.value = false
@@ -335,13 +321,13 @@
       formRef.value.resetFields()
     }
     Object.assign(form, {
-      drugName: '',
-      brandName: '',
-      specification: '',
-      unit: '',
-      manufacturer: '',
-      drugCategory: undefined,
-      price: 0,
+      chinaName: '',
+      goodsName: '',
+      specifications: '',
+      drugUnit: '',
+      drugManufacturer: '',
+      insuranceType: undefined,
+      drugPrice: 0,
       remarks: ''
     })
   }

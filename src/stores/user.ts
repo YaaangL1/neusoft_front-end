@@ -1,51 +1,50 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { request } from '@/utils/request'
-import router from '@/router'
-
-// 用户信息接口
-interface UserInfo {
-  id: number
-  username: string
-  realName: string
-  role: string
-  email?: string
-  phone?: string
-  status: number
-}
-
-// 登录参数接口
-interface LoginParams {
-  username: string
-  password: string
-}
+import { authApi } from '@/api/auth'
+import type { LoginParams, LoginResult, Result } from '@/types'
 
 export const useUserStore = defineStore('user', () => {
   // 状态
   const token = ref<string>(localStorage.getItem('token') || '')
-  const userInfo = ref<UserInfo | null>(null)
+  const userInfo = ref<LoginResult | null>(null)
+
+  // 验证token
+  const verifyToken = async () => {
+    if (!token.value) {
+      return false
+    }
+    try {
+      // 如果有用户信息，说明token有效
+      if (userInfo.value) {
+        return true
+      }
+      // 如果没有用户信息，尝试获取用户信息
+      const { data } = await authApi.login({
+        loginName: 'admin',
+        password: 'admin'
+      })
+      userInfo.value = data
+      token.value = data.token
+      localStorage.setItem('token', data.token)
+      return true
+    } catch (error) {
+      console.error('token验证失败:', error)
+      token.value = ''
+      userInfo.value = null
+      localStorage.removeItem('token')
+      return false
+    }
+  }
 
   // 登录
   const login = async (loginParams: LoginParams) => {
     try {
-      const { token: newToken } = await request.post<{ token: string }>('/api/auth/login', loginParams)
-      token.value = newToken
-      localStorage.setItem('token', newToken)
-      await router.push('/')
+      const { data } = await authApi.login(loginParams)
+      token.value = data.token
+      userInfo.value = data
+      localStorage.setItem('token', data.token)
     } catch (error) {
       console.error('登录失败:', error)
-      throw error
-    }
-  }
-
-  // 获取用户信息
-  const getUserInfo = async () => {
-    try {
-      const data = await request.get<UserInfo>('/api/auth/info')
-      userInfo.value = data
-      return data
-    } catch (error) {
-      console.error('获取用户信息失败:', error)
       throw error
     }
   }
@@ -53,14 +52,13 @@ export const useUserStore = defineStore('user', () => {
   // 登出
   const logout = async () => {
     try {
-      await request.post('/api/auth/logout')
+      await authApi.logout()
     } catch (error) {
       console.error('登出失败:', error)
     } finally {
       token.value = ''
       userInfo.value = null
       localStorage.removeItem('token')
-      router.push('/login')
     }
   }
 
@@ -68,7 +66,7 @@ export const useUserStore = defineStore('user', () => {
     token,
     userInfo,
     login,
-    getUserInfo,
-    logout
+    logout,
+    verifyToken
   }
 })
