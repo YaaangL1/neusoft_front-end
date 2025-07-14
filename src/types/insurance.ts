@@ -68,7 +68,7 @@ export interface DrugReimbursementVO {
   drugReimbursementType: string
   drugReimbursementProportion: number
   drugReimbursementInfo?: string
-  status: Status
+  status: number
   createdTime: string
   updatedTime: string
 }

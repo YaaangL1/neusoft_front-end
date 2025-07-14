@@ -135,7 +135,7 @@ export const reimbursementApi = {
 // 药品相关API
 export const drugApi = {
   // 分页查询药品信息
-  async getPage(params: { pageNum: number; pageSize: number; drugName?: string; insuranceType?: string }) {
+  async getPage(params: { pageNum: number; pageSize: number; drugName?: string }) {
     try {
       console.log('调用药品分页查询API，参数:', params)
       const response = await request.get<Result<PageResult<any>>>('/api/drugs/page', { params })
@@ -460,10 +460,10 @@ export const ratioApi = {
   },
 
   // 更新药品报销比例状态
-  async updateDrugRatioStatus(ratioId: number, status: number) {
+  async updateDrugRatioStatus(ratioId: number, data: { status: number }) {
     try {
-      console.log('调用更新药品报销比例状态API，参数:', { ratioId, status })
-      const response = await request.put<Result<any>>(`/api/drug-reimbursement-ratios/${ratioId}/status`, { status })
+      console.log('调用更新药品报销比例状态API，参数:', { ratioId, status: data.status })
+      const response = await request.put<Result<any>>(`/api/drug-reimbursement-ratios/${ratioId}/status`, data)
       console.log('更新药品报销比例状态响应:', response)
       return response
     } catch (error) {
@@ -507,6 +507,19 @@ export const ratioApi = {
       return response
     } catch (error) {
       console.error('删除医院报销比例失败:', error)
+      throw error
+    }
+  },
+
+  // 获取启用的药品报销比例
+  async getEnabledDrugRatios() {
+    try {
+      console.log('调用获取启用的药品报销比例API')
+      const response = await request.get<Result<any[]>>('/api/drug-reimbursement-ratios/enabled')
+      console.log('获取启用的药品报销比例响应:', response)
+      return response
+    } catch (error) {
+      console.error('获取启用的药品报销比例失败:', error)
       throw error
     }
   }

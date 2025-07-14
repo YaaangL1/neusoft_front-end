@@ -60,8 +60,13 @@
         :data="tableData"
         border
         stripe
-        style="width: 100%"
+        style="width: 100%; table-layout: fixed;"
       >
+        <el-table-column prop="id" label="ID" width="80" align="center">
+          <template #default="{ row }">
+            <strong style="color: #409EFF;">{{ row.id }}</strong>
+          </template>
+        </el-table-column>
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="patientName" label="患者姓名" width="120" />
         <el-table-column prop="medicalName" label="项目名称" width="200" />
@@ -265,12 +270,15 @@ const rules: FormRules = {
 const fetchTreatmentRecords = async () => {
   loading.value = true
   try {
-    const { data } = await treatmentApi.getPage({
-      ...searchForm,
+    const params = {
       ...pagination,
+      patientName: searchForm.patientName,
+      treatmentName: searchForm.treatmentName,
       startDate: searchForm.treatmentDate?.[0],
       endDate: searchForm.treatmentDate?.[1]
-    })
+    }
+    const { data } = await treatmentApi.getPage(params)
+    console.log('API返回的数据:', data.list)
     tableData.value = data.list
     pagination.total = data.total
   } catch (error) {
