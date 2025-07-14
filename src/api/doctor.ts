@@ -7,7 +7,7 @@ import type {
   PatientMedicalServiceVO
 } from '../types/doctor'
 import type {
-  ReimbursementCalculationVO,
+  ReimbursementCalculation,
   ReimbursementRecord
 } from '../types/insurance'
 
@@ -142,7 +142,7 @@ export const reimbursementApi = {
     startDate?: string,
     endDate?: string 
   }) {
-    return request.get<Result<ReimbursementCalculationVO>>(`/api/insured-persons/${personId}/reimbursement-calculation`, { params })
+    return request.get<Result<ReimbursementCalculation>>(`/api/insured-persons/${personId}/reimbursement-calculation`, { params })
   },
   // 执行费用报销
   execute(personId: number, params: {

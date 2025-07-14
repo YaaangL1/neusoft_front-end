@@ -16,37 +16,24 @@
   
             <el-table :data="drugRatios" border stripe>
               <el-table-column type="index" label="序号" width="60" align="center" />
-              <el-table-column prop="drugCategory" label="药品类别" width="120">
+              <el-table-column prop="drugReimbursementType" label="药品类别" width="120">
                 <template #default="{ row }">
-                  <el-tag :type="drugCategoryType(row.drugCategory)">
-                    {{ row.drugCategory }}
+                  <el-tag :type="drugCategoryType(row.drugReimbursementType)">
+                    {{ row.drugReimbursementType }}
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column prop="hospitalLevel" label="医院等级" width="120">
+              <el-table-column prop="drugReimbursementProportion" label="报销比例" width="120">
                 <template #default="{ row }">
-                  <el-tag type="info">{{ row.hospitalLevel }}</el-tag>
+                  {{ row.drugReimbursementProportion }}%
                 </template>
               </el-table-column>
-              <el-table-column prop="ratio" label="报销比例" width="120">
-                <template #default="{ row }">
-                  {{ row.ratio }}%
-                </template>
-              </el-table-column>
-              <el-table-column prop="maxAmount" label="最高限额" width="150">
-                <template #default="{ row }">
-                  {{ formatPrice(row.maxAmount) }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="remarks" label="备注" min-width="200" show-overflow-tooltip />
+              <el-table-column prop="drugReimbursementInfo" label="报销等级信息" min-width="200" show-overflow-tooltip />
               <el-table-column prop="status" label="状态" width="80" align="center">
                 <template #default="{ row }">
-                  <el-switch
-                    v-model="row.status"
-                    :active-value="1"
-                    :inactive-value="0"
-                    @change="handleDrugRatioStatusChange(row)"
-                  />
+                  <el-tag :type="row.status === 1 ? 'success' : 'info'">
+                    {{ row.status === 1 ? '启用' : '禁用' }}
+                  </el-tag>
                 </template>
               </el-table-column>
               <el-table-column label="操作" width="150" align="center">
@@ -144,47 +131,36 @@
           ref="drugRatioFormRef"
           :model="drugRatioForm"
           :rules="drugRatioRules"
-          label-width="100px"
+          label-width="120px"
         >
-          <el-form-item label="药品类别" prop="drugCategory">
-            <el-select v-model="drugRatioForm.drugCategory" placeholder="请选择药品类别">
-              <el-option label="甲类" value="甲类" />
-              <el-option label="乙类" value="乙类" />
-              <el-option label="丙类" value="丙类" />
+          <el-form-item label="药品报销类型" prop="drugReimbursementType">
+            <el-select v-model="drugRatioForm.drugReimbursementType" placeholder="请选择药品类别">
+              <el-option label="甲类药品" value="甲类药品" />
+              <el-option label="乙类药品" value="乙类药品" />
+              <el-option label="丙类药品" value="丙类药品" />
             </el-select>
           </el-form-item>
-          <el-form-item label="医院等级" prop="hospitalLevel">
-            <el-select v-model="drugRatioForm.hospitalLevel" placeholder="请选择医院等级">
-              <el-option label="三级医院" value="三级医院" />
-              <el-option label="二级医院" value="二级医院" />
-              <el-option label="一级医院" value="一级医院" />
-              <el-option label="社区医院" value="社区医院" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="报销比例" prop="ratio">
+          <el-form-item label="报销比例(%)" prop="drugReimbursementProportion">
             <el-input-number
-              v-model="drugRatioForm.ratio"
+              v-model="drugRatioForm.drugReimbursementProportion"
               :min="0"
               :max="100"
               :precision="0"
               style="width: 100%"
             />
           </el-form-item>
-          <el-form-item label="最高限额" prop="maxAmount">
-            <el-input-number
-              v-model="drugRatioForm.maxAmount"
-              :min="0"
-              :precision="2"
-              :step="100"
-              style="width: 100%"
+          <el-form-item label="报销等级信息" prop="drugReimbursementInfo">
+            <el-input
+              v-model="drugRatioForm.drugReimbursementInfo"
+              type="textarea"
+              placeholder="请输入报销等级信息"
             />
           </el-form-item>
-          <el-form-item label="备注" prop="remarks">
-            <el-input
-              v-model="drugRatioForm.remarks"
-              type="textarea"
-              placeholder="请输入备注信息"
-            />
+          <el-form-item label="状态" prop="status">
+            <el-radio-group v-model="drugRatioForm.status">
+              <el-radio :label="1">启用</el-radio>
+              <el-radio :label="0">禁用</el-radio>
+            </el-radio-group>
           </el-form-item>
         </el-form>
         <template #footer>
@@ -297,26 +273,19 @@
   })
   
   const drugRatioFormRef = ref<FormInstance>()
-  const drugRatioForm = reactive<Partial<DrugRatio>>({
-    drugCategory: '',
-    hospitalLevel: '',
-    ratio: 0,
-    maxAmount: 0,
-    remarks: ''
+  const drugRatioForm = reactive<Partial<DrugReimbursementVO>>({
+    drugReimbursementType: '',
+    drugReimbursementProportion: 0,
+    drugReimbursementInfo: '全部纳入医保基金支付范围',
+    status: 1
   })
   
   const drugRatioRules: FormRules = {
-    drugCategory: [
+    drugReimbursementType: [
       { required: true, message: '请选择药品类别', trigger: 'change' }
     ],
-    hospitalLevel: [
-      { required: true, message: '请选择医院等级', trigger: 'change' }
-    ],
-    ratio: [
+    drugReimbursementProportion: [
       { required: true, message: '请输入报销比例', trigger: 'blur' }
-    ],
-    maxAmount: [
-      { required: true, message: '请输入最高限额', trigger: 'blur' }
     ]
   }
   
@@ -333,6 +302,7 @@
     minPayLevel: '',
     maxPayLevel: '',
     ratio: 0,
+    payProportion: '0',
     remarks: '',
     status: 1
   })
@@ -358,6 +328,7 @@
       minPayLevel: '',
       maxPayLevel: '',
       ratio: 0,
+      payProportion: '0',
       remarks: '',
       status: 1
     })
@@ -371,6 +342,10 @@
       
       if (res && res.data) {
         drugRatios.value = res.data || []
+        // 输出数据结构以便调试
+        if (drugRatios.value.length > 0) {
+          console.log('药品报销比例示例数据:', drugRatios.value[0])
+        }
       } else {
         console.error('响应数据格式错误:', res)
         ElMessage.error('获取药品报销比例列表失败：响应数据格式错误')
@@ -429,6 +404,10 @@
   // 药品报销比例操作
   const handleAddDrugRatio = () => {
     drugRatioDialog.type = 'add'
+    drugRatioForm.drugReimbursementType = ''
+    drugRatioForm.drugReimbursementProportion = 0
+    drugRatioForm.drugReimbursementInfo = '全部纳入医保基金支付范围'
+    drugRatioForm.status = 1
     drugRatioDialog.visible = true
   }
   
@@ -461,13 +440,13 @@
   
   const handleDrugRatioStatusChange = async (row: DrugReimbursementVO) => {
     try {
-      await ratioApi.updateDrugRatioStatus(row.id!, {
-        status: row.status
-      })
+      await ratioApi.updateDrugRatioStatus(row.id!, { status: row.status })
       ElMessage.success('状态更新成功')
     } catch (error: any) {
       console.error('状态更新失败:', error)
       ElMessage.error(error.message || '状态更新失败')
+      // 状态更新失败时恢复原始状态
+      row.status = row.status === 1 ? 0 : 1
     }
   }
   
@@ -499,11 +478,10 @@
       drugRatioFormRef.value.resetFields()
     }
     Object.assign(drugRatioForm, {
-      drugCategory: '',
-      hospitalLevel: '',
-      ratio: 0,
-      maxAmount: 0,
-      remarks: ''
+      drugReimbursementType: '',
+      drugReimbursementProportion: 0,
+      drugReimbursementInfo: '全部纳入医保基金支付范围',
+      status: 1
     })
   }
   
@@ -590,11 +568,11 @@
   
   const drugCategoryType = (category: string) => {
     switch (category) {
-      case '甲类':
+      case '甲类药品':
         return 'success'
-      case '乙类':
+      case '乙类药品':
         return 'warning'
-      case '丙类':
+      case '丙类药品':
         return 'danger'
       default:
         return 'info'

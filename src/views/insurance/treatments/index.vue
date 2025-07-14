@@ -11,14 +11,6 @@
               @keyup.enter="handleSearch"
             />
           </el-form-item>
-        <el-form-item label="项目编码" prop="medicalNumber">
-            <el-input
-            v-model="searchForm.medicalNumber"
-              placeholder="请输入项目编码"
-              clearable
-              @keyup.enter="handleSearch"
-            />
-          </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSearch">
               <el-icon><Search /></el-icon>
@@ -171,8 +163,7 @@
   
   // 搜索表单
   const searchForm = reactive({
-    treatmentName: '',
-    medicalNumber: ''
+    treatmentName: ''
   })
   
   // 分页信息
@@ -226,8 +217,7 @@
       const params = {
         pageNum: pagination.pageNum,
         pageSize: pagination.pageSize,
-        treatmentName: searchForm.treatmentName,
-        medicalNumber: searchForm.medicalNumber
+        treatmentName: searchForm.treatmentName
       }
       console.log('请求诊疗项目列表，参数:', params)
       const res = await treatmentApi.getPage(params)
@@ -257,8 +247,7 @@
   // 重置查询
   const resetSearch = () => {
     Object.assign(searchForm, {
-      treatmentName: '',
-      medicalNumber: ''
+      treatmentName: ''
     })
     handleSearch()
   }
