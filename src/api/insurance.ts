@@ -58,6 +58,7 @@ export const expenseApi = {
     
     return request.get<Result<ExpenseDetail[]>>(url, {
       params: {
+        personId: params.personId,
         startDate: params.startDate,
         endDate: params.endDate
       }
@@ -69,24 +70,89 @@ export const expenseApi = {
 
   // 获取费用类型分布
   getExpenseTypeChart(personId: number, startDate?: string, endDate?: string) {
-    return request.get<{ type: string; amount: number; percentage: number }[]>(
+    return request.get<Result<{ type: string; amount: number; percentage: number }[]>>(
       `/api/reimbursement-reports/persons/${personId}/expense-type-chart`,
-      { params: { startDate, endDate } }
-    )
+      { params: { personId, startDate, endDate } }
+    ).then(response => {
+      // 确保返回的是数组
+      if (response.data && Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && typeof response.data === 'object') {
+        // 处理可能的嵌套数据结构
+        const data = response.data as any;
+        if (data.data && Array.isArray(data.data)) {
+          return data.data;
+        }
+      }
+      // 默认返回空数组
+      console.warn('费用类型分布数据格式不正确:', response);
+      return [];
+    })
   },
 
   // 获取药品分类占比
   getDrugCategoryChart(personId: number, startDate?: string, endDate?: string) {
-    return request.get<{ type: string; amount: number; percentage: number }[]>(
+    return request.get<Result<{ type: string; amount: number; percentage: number }[]>>(
       `/api/reimbursement-reports/persons/${personId}/drug-category-chart`,
-      { params: { startDate, endDate } }
+      { params: { personId, startDate, endDate } }
+    ).then(response => {
+      // 确保返回的是数组
+      if (response.data && Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && typeof response.data === 'object') {
+        // 处理可能的嵌套数据结构
+        const data = response.data as any;
+        if (data.data && Array.isArray(data.data)) {
+          return data.data;
+        }
+      }
+      // 默认返回空数组
+      console.warn('药品分类占比数据格式不正确:', response);
+      return [];
+    })
+  },
+
+  // 获取综合报告
+  getComprehensiveReport(personId: number, startDate?: string, endDate?: string) {
+    return request.get<Result<{
+      patientId: number;
+      patientName: string;
+      caseNumber: string;
+      totalAmount: number;
+      drugCategoryRatio: {
+        categoryName: string;
+        amount: number;
+        percentage: number;
+        itemCount: number;
+      }[];
+      expenseTypeRatio: {
+        categoryName: string;
+        amount: number;
+        percentage: number;
+        itemCount: number;
+      }[];
+      expenseSummary: {
+        categoryADrugAmount: number;
+        categoryBDrugAmount: number;
+        categoryCDrugAmount: number;
+        treatmentAmount: number;
+        serviceAmount: number;
+        totalDrugAmount: number;
+        totalAmount: number;
+      };
+    }>>(
+      `/api/reimbursement-reports/persons/${personId}/comprehensive-report`,
+      { params: { personId, startDate, endDate } }
     )
   },
 
   // 导出费用明细
   exportExpenses(personId: number, params: { expenseType?: string; startDate?: string; endDate?: string }) {
     return request.get(`/api/expense-query/persons/${personId}/expenses/export`, {
-      params,
+      params: {
+        ...params,
+        personId
+      },
       responseType: 'blob'
     })
   }
@@ -105,18 +171,20 @@ export const reimbursementApi = {
   },
 
   // 计算报销金额
-  calculate(personId: number, params: Omit<ReimbursementCalculationParams, 'personId'>) {
-    return request.get<ReimbursementCalculation>(
+  calculate(personId: number, params: ReimbursementCalculationParams) {
+    return request.post<ReimbursementCalculation>(
       `/api/reimbursement/persons/${personId}/calculate`,
+      null,
       { params }
     )
   },
 
   // 执行报销
-  execute(personId: number, params: Omit<ReimbursementExecuteParams, 'personId'>) {
+  execute(personId: number, params: ReimbursementExecuteParams) {
     return request.post<ReimbursementRecord>(
       `/api/reimbursement/persons/${personId}/execute`,
-      params
+      null,
+      { params }
     )
   },
 
@@ -124,7 +192,12 @@ export const reimbursementApi = {
   getHistory(personId: number, params?: { startDate?: string; endDate?: string }) {
     return request.get<Result<ReimbursementRecord[]>>(
       `/api/reimbursement/persons/${personId}/history`,
-      { params }
+      { 
+        params: {
+          ...params,
+          personId
+        }
+      }
     ).then(response => {
       // 确保返回的是数组
       return Array.isArray(response.data) ? response.data : []
@@ -135,7 +208,7 @@ export const reimbursementApi = {
 // 药品相关API
 export const drugApi = {
   // 分页查询药品信息
-  async getPage(params: { pageNum: number; pageSize: number; drugName?: string; insuranceType?: string }) {
+  async getPage(params: { pageNum: number; pageSize: number; drugName?: string }) {
     try {
       console.log('调用药品分页查询API，参数:', params)
       const response = await request.get<Result<PageResult<any>>>('/api/drugs/page', { params })
@@ -460,10 +533,10 @@ export const ratioApi = {
   },
 
   // 更新药品报销比例状态
-  async updateDrugRatioStatus(ratioId: number, status: number) {
+  async updateDrugRatioStatus(ratioId: number, data: { status: number }) {
     try {
-      console.log('调用更新药品报销比例状态API，参数:', { ratioId, status })
-      const response = await request.put<Result<any>>(`/api/drug-reimbursement-ratios/${ratioId}/status`, { status })
+      console.log('调用更新药品报销比例状态API，参数:', { ratioId, status: data.status })
+      const response = await request.put<Result<any>>(`/api/drug-reimbursement-ratios/${ratioId}/status`, data)
       console.log('更新药品报销比例状态响应:', response)
       return response
     } catch (error) {
@@ -507,6 +580,61 @@ export const ratioApi = {
       return response
     } catch (error) {
       console.error('删除医院报销比例失败:', error)
+      throw error
+    }
+  },
+
+  // 获取启用的药品报销比例
+  async getEnabledDrugRatios() {
+    try {
+      console.log('调用获取启用的药品报销比例API')
+      const response = await request.get<Result<any[]>>('/api/drug-reimbursement-ratios/enabled')
+      console.log('获取启用的药品报销比例响应:', response)
+      return response
+    } catch (error) {
+      console.error('获取启用的药品报销比例失败:', error)
+      throw error
+    }
+  }
+}
+
+// 医疗服务相关API
+export const medicalServiceApi = {
+  // 分页查询医疗服务
+  async getPage(params: { pageNum: number; pageSize: number; serviceName?: string }) {
+    try {
+      console.log('调用医疗服务分页查询API，参数:', params)
+      const response = await request.get<Result<PageResult<any>>>('/api/medical-services/page', { params })
+      console.log('医疗服务分页查询API响应:', response)
+      return response
+    } catch (error) {
+      console.error('医疗服务分页查询失败:', error)
+      throw error
+    }
+  },
+
+  // 搜索医疗服务
+  async search(serviceName: string) {
+    try {
+      console.log('调用医疗服务搜索API，参数:', { serviceName })
+      const response = await request.get<Result<any[]>>('/api/medical-services/search', { params: { serviceName } })
+      console.log('医疗服务搜索API响应:', response)
+      return response
+    } catch (error) {
+      console.error('医疗服务搜索失败:', error)
+      throw error
+    }
+  },
+
+  // 获取医疗服务详情
+  async getById(serviceId: number) {
+    try {
+      console.log('调用医疗服务详情API，参数:', { serviceId })
+      const response = await request.get<Result<any>>(`/api/medical-services/${serviceId}`)
+      console.log('医疗服务详情API响应:', response)
+      return response
+    } catch (error) {
+      console.error('获取医疗服务详情失败:', error)
       throw error
     }
   }

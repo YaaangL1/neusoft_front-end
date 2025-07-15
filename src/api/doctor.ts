@@ -7,9 +7,10 @@ import type {
   PatientMedicalServiceVO
 } from '../types/doctor'
 import type {
-  ReimbursementCalculationVO,
+  ReimbursementCalculation,
   ReimbursementRecord
 } from '../types/insurance'
+import dayjs from 'dayjs'
 
 // 诊断管理API
 export const diagnosisApi = {
@@ -27,11 +28,39 @@ export const diagnosisApi = {
   },
   // 新增
   add(data: Partial<PatientDiagnosisVO>) {
-    return request.post<Result<string>>('/api/patient-diagnoses', data)
+    console.log('API层添加诊断数据:', JSON.stringify(data))
+    // 确保数据格式正确，严格按照API文档要求转换为InpatientDisease格式
+    const submitData: any = {
+      diseaseId: Number(data.diseaseId),
+      diseaseType: Number(data.diseaseType),
+      patientId: Number(data.patientId),
+      orderTime: data.orderTime ? dayjs(data.orderTime).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')
+    }
+    if (data.createdTime) {
+      submitData.createdTime = dayjs(data.createdTime).format('YYYY-MM-DD')
+    }
+    return request.post<Result<string>>('/api/patient-diagnoses', submitData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
   },
   // 修改
   update(id: number, data: Partial<PatientDiagnosisVO>) {
-    return request.put<Result<string>>(`/api/patient-diagnoses/${id}`, data)
+    console.log('API层更新诊断数据:', JSON.stringify(data))
+    // 确保数据格式正确，严格按照API文档要求转换为InpatientDisease格式
+    const submitData = {
+      id: Number(id),
+      diseaseId: Number(data.diseaseId),
+      diseaseType: Number(data.diseaseType),
+      patientId: Number(data.patientId),
+      orderTime: data.orderTime ? dayjs(data.orderTime).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')
+    }
+    return request.put<Result<string>>(`/api/patient-diagnoses/${id}`, submitData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
   },
   // 删除
   delete(id: number) {
@@ -42,7 +71,7 @@ export const diagnosisApi = {
 // 处方管理API
 export const prescriptionApi = {
   // 分页查询
-  getPage(params: PageQuery & { drugName?: string, patientId?: number }) {
+  getPage(params: PageQuery & { drugName?: string, patientName?: string, patientId?: number }) {
     return request.get<Result<PageResult<PatientPrescriptionVO>>>('/api/patient-prescriptions/page', { params })
   },
   // 搜索
@@ -54,12 +83,51 @@ export const prescriptionApi = {
     return request.get<Result<PatientPrescriptionVO>>(`/api/patient-prescriptions/${id}`)
   },
   // 新增
-  add(data: Partial<PatientPrescriptionVO>) {
-    return request.post<Result<string>>('/api/patient-prescriptions', data)
+  add(data: any) {
+    console.log('API层添加处方数据:', JSON.stringify(data))
+    // 确保数据格式正确，严格按照API文档要求
+    const currentTime = new Date().toISOString();
+    const submitData = {
+      createdTime: data.createdTime || currentTime,
+      doctorOrder: data.doctorOrder || '',
+      drugId: Number(data.drugId),
+      endTime: data.endTime || '',
+      orderNumber: Number(data.orderNumber || 0),
+      patientId: Number(data.patientId),
+      startTime: data.startTime || '',
+      status: Number(data.status || 1),
+      updatedTime: data.updatedTime || currentTime,
+      useMethod: data.useMethod || ''
+    }
+    return request.post<Result<string>>('/api/patient-prescriptions', submitData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
   },
   // 修改
-  update(id: number, data: Partial<PatientPrescriptionVO>) {
-    return request.put<Result<string>>(`/api/patient-prescriptions/${id}`, data)
+  update(id: number, data: any) {
+    console.log('API层更新处方数据:', JSON.stringify(data))
+    // 确保数据格式正确，严格按照API文档要求
+    const currentTime = new Date().toISOString();
+    const submitData = {
+      createdTime: data.createdTime || currentTime,
+      doctorOrder: data.doctorOrder || '',
+      drugId: Number(data.drugId),
+      endTime: data.endTime || '',
+      id: Number(id),
+      orderNumber: Number(data.orderNumber || 0),
+      patientId: Number(data.patientId),
+      startTime: data.startTime || '',
+      status: Number(data.status || 1),
+      updatedTime: currentTime,
+      useMethod: data.useMethod || ''
+    }
+    return request.put<Result<string>>(`/api/patient-prescriptions/${id}`, submitData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
   },
   // 删除
   delete(id: number) {
@@ -110,12 +178,45 @@ export const serviceApi = {
     return request.get<Result<PatientMedicalServiceVO>>(`/api/patient-medical-services/${id}`)
   },
   // 新增
-  add(data: Partial<PatientMedicalServiceVO>) {
-    return request.post<Result<string>>('/api/patient-medical-services', data)
+  add(data: any) {
+    console.log('API层添加医疗服务数据:', JSON.stringify(data))
+    // 确保数据格式正确，严格按照API文档要求
+    const submitData = {
+      createdTime: data.createdTime || new Date().toISOString(),
+      doctorOrder: data.doctorOrder || '',
+      medicalId: Number(data.medicalId),
+      orderTime: data.orderTime || new Date().toISOString(),
+      patientId: Number(data.patientId),
+      status: Number(data.status || 1),
+      updatedTime: data.updatedTime || new Date().toISOString(),
+      useMethod: data.useMethod || ''
+    }
+    return request.post<Result<string>>('/api/patient-medical-services', submitData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
   },
   // 修改
-  update(id: number, data: Partial<PatientMedicalServiceVO>) {
-    return request.put<Result<string>>(`/api/patient-medical-services/${id}`, data)
+  update(id: number, data: any) {
+    console.log('API层更新医疗服务数据:', JSON.stringify(data))
+    // 确保数据格式正确，严格按照API文档要求
+    const submitData = {
+      createdTime: data.createdTime || new Date().toISOString(),
+      doctorOrder: data.doctorOrder || '',
+      id: Number(id),
+      medicalId: Number(data.medicalId),
+      orderTime: data.orderTime || new Date().toISOString(),
+      patientId: Number(data.patientId),
+      status: Number(data.status || 1),
+      updatedTime: data.updatedTime || new Date().toISOString(),
+      useMethod: data.useMethod || ''
+    }
+    return request.put<Result<string>>(`/api/patient-medical-services/${id}`, submitData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
   },
   // 删除
   delete(id: number) {
@@ -142,7 +243,7 @@ export const reimbursementApi = {
     startDate?: string,
     endDate?: string 
   }) {
-    return request.get<Result<ReimbursementCalculationVO>>(`/api/insured-persons/${personId}/reimbursement-calculation`, { params })
+    return request.get<Result<ReimbursementCalculation>>(`/api/insured-persons/${personId}/reimbursement-calculation`, { params })
   },
   // 执行费用报销
   execute(personId: number, params: {
@@ -162,4 +263,4 @@ export const reimbursementApi = {
   }) {
     return request.get<Result<ReimbursementRecord[]>>(`/api/insured-persons/${personId}/reimbursement-report`, { params })
   }
-} 
+}

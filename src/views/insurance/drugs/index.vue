@@ -11,13 +11,6 @@
               @keyup.enter="handleSearch"
             />
           </el-form-item>
-          <el-form-item label="药品类别" prop="insuranceType">
-            <el-select v-model="searchForm.insuranceType" placeholder="请选择药品类别" clearable>
-              <el-option label="甲类" value="甲类" />
-              <el-option label="乙类" value="乙类" />
-              <el-option label="丙类" value="丙类" />
-            </el-select>
-          </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSearch">
               <el-icon><Search /></el-icon>
@@ -170,8 +163,7 @@
   
   // 搜索表单
   const searchForm = reactive({
-    drugName: '',
-    insuranceType: ''
+    drugName: ''
   })
   
   // 分页信息
@@ -224,8 +216,7 @@
       const params = {
         pageNum: pagination.pageNum,
         pageSize: pagination.pageSize,
-        drugName: searchForm.drugName,
-        insuranceType: searchForm.insuranceType
+        drugName: searchForm.drugName
       }
       console.log('请求药品列表，参数:', params)
       const res = await drugApi.getPage(params)
@@ -255,8 +246,7 @@
   // 重置查询
   const resetSearch = () => {
     Object.assign(searchForm, {
-      drugName: '',
-      insuranceType: ''
+      drugName: ''
     })
     handleSearch()
   }

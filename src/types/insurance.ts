@@ -68,7 +68,7 @@ export interface DrugReimbursementVO {
   drugReimbursementType: string
   drugReimbursementProportion: number
   drugReimbursementInfo?: string
-  status: Status
+  status: number
   createdTime: string
   updatedTime: string
 }
@@ -205,8 +205,9 @@ export interface ExpenseQuery {
 }
 
 export interface ReimbursementCalculationParams {
-  personId: number
+  personId?: number
   hospitalLevel: string
+  peopleType?: string
   startDate?: string
   endDate?: string
 }

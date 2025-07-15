@@ -6,7 +6,7 @@
       <el-form-item label="参保人姓名">
         <el-input v-model="searchForm.personName" placeholder="请输入参保人姓名" clearable />
       </el-form-item>
-      <el-form-item label="参保状态">
+      <!-- <el-form-item label="参保状态">
         <el-select v-model="searchForm.insuranceStatus" placeholder="请选择参保状态" clearable>
           <el-option label="已参保" value="1" />
           <el-option label="未参保" value="0" />
@@ -17,7 +17,7 @@
           <el-option label="在职" value="1" />
           <el-option label="退休" value="0" />
         </el-select>
-      </el-form-item>
+      </el-form-item> -->
       <el-form-item>
         <el-button type="primary" @click="handleSearch">查询</el-button>
         <el-button @click="resetSearch">重置</el-button>
@@ -90,6 +90,12 @@
               <el-option label="三级医院" value="三级" />
             </el-select>
           </el-form-item>
+          <el-form-item label="人员类别" prop="peopleType">
+            <el-select v-model="form.peopleType" placeholder="请选择人员类别" disabled>
+              <el-option label="在职" value="1" />
+              <el-option label="退休" value="0" />
+            </el-select>
+          </el-form-item>
           <el-form-item label="费用日期" prop="dateRange">
             <el-date-picker
               v-model="form.dateRange"
@@ -98,8 +104,12 @@
               start-placeholder="开始日期"
               end-placeholder="结束日期"
               value-format="YYYY-MM-DD"
+              clearable
               @change="handleDateRangeChange"
             />
+            <el-button type="primary" link @click="debugDateValues" style="margin-left: 10px">
+              测试日期
+            </el-button>
           </el-form-item>
           <el-form-item label="审批人" prop="approver" v-if="form.calculationResult">
             <el-input v-model="form.approver" placeholder="请输入审批人姓名" />
@@ -118,22 +128,22 @@
         <div v-if="form.calculationResult" class="calculation-result">
           <el-descriptions title="费用报销计算结果" :column="2" border>
             <el-descriptions-item label="总费用">
-              {{ formatAmount(form.calculationResult.expenseSummary.totalAmount) }}
+              {{ form.calculationResult && form.calculationResult.expenseSummary ? formatAmount(form.calculationResult.expenseSummary.totalAmount) : '0.00' }}
             </el-descriptions-item>
             <el-descriptions-item label="起付线">
-              {{ formatAmount(form.calculationResult.reimbursementResult.deductibleAmount) }}
+              {{ form.calculationResult && form.calculationResult.reimbursementResult ? formatAmount(form.calculationResult.reimbursementResult.deductibleAmount) : '0.00' }}
             </el-descriptions-item>
             <el-descriptions-item label="超过起付线金额">
-              {{ formatAmount(form.calculationResult.reimbursementResult.aboveDeductibleAmount) }}
+              {{ form.calculationResult && form.calculationResult.reimbursementResult ? formatAmount(form.calculationResult.reimbursementResult.aboveDeductibleAmount) : '0.00' }}
             </el-descriptions-item>
             <el-descriptions-item label="报销比例">
-              {{ form.calculationResult.reimbursementResult.overallReimbursementRatio }}%
+              {{ form.calculationResult && form.calculationResult.reimbursementResult ? (form.calculationResult.reimbursementResult.overallReimbursementRatio || 0) : 0 }}%
             </el-descriptions-item>
             <el-descriptions-item label="医保基金支付">
-              {{ formatAmount(form.calculationResult.reimbursementResult.insuranceFundAmount) }}
+              {{ form.calculationResult && form.calculationResult.reimbursementResult ? formatAmount(form.calculationResult.reimbursementResult.insuranceFundAmount) : '0.00' }}
             </el-descriptions-item>
             <el-descriptions-item label="个人支付">
-              {{ formatAmount(form.calculationResult.reimbursementResult.personalPayAmount) }}
+              {{ form.calculationResult && form.calculationResult.reimbursementResult ? formatAmount(form.calculationResult.reimbursementResult.personalPayAmount) : '0.00' }}
             </el-descriptions-item>
           </el-descriptions>
         </div>
@@ -248,9 +258,7 @@ import dayjs from 'dayjs'
 
 // 搜索表单
 const searchForm = reactive({
-  personName: '',
-  insuranceStatus: '',
-  peopleType: ''
+  personName: ''
 })
 
 // 分页信息
@@ -285,6 +293,7 @@ const formRef = ref<FormInstance>()
 const form = reactive({
   personId: 0,
   hospitalLevel: '',
+  peopleType: '',
   dateRange: [] as string[],
   startDate: '',
   endDate: '',
@@ -296,7 +305,7 @@ const form = reactive({
 // 表单校验规则
 const rules = reactive<FormRules>({
   hospitalLevel: [{ required: true, message: '请选择医院等级', trigger: 'change' }],
-  dateRange: [{ required: true, message: '请选择费用日期范围', trigger: 'change' }],
+  dateRange: [{ required: false, trigger: 'change' }],
   approver: [{ required: true, message: '请输入审批人姓名', trigger: 'blur' }]
 })
 
@@ -315,8 +324,6 @@ const handleSearch = () => {
 // 重置搜索
 const resetSearch = () => {
   searchForm.personName = ''
-  searchForm.insuranceStatus = ''
-  searchForm.peopleType = ''
   handleSearch()
 }
 
@@ -327,7 +334,7 @@ const fetchInsuredPersons = async () => {
     const res = await insuredPersonApi.getPage({
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize,
-      ...searchForm
+      personName: searchForm.personName
     })
     tableData.value = res.list
     pagination.total = res.total
@@ -343,6 +350,7 @@ const openDialog = (type: 'calculate' | 'expense' | 'history', row: InsuredPerso
   dialogType.value = type
   dialogVisible.value = true
   form.personId = row.id
+  form.peopleType = row.peopleType // 设置人员类别
 
   if (type === 'calculate') {
     // 重置表单
@@ -363,13 +371,17 @@ const openDialog = (type: 'calculate' | 'expense' | 'history', row: InsuredPerso
 }
 
 // 日期范围变化
-const handleDateRangeChange = (dates: string[]) => {
-  if (dates) {
-    form.startDate = dates[0]
-    form.endDate = dates[1]
+const handleDateRangeChange = (dates: string[] | null) => {
+  console.log('日期选择器值变化:', dates)
+  if (dates && Array.isArray(dates) && dates.length === 2) {
+    // 将YYYY-MM-DD格式转换为符合Java LocalDateTime格式的字符串
+    form.startDate = dates[0] ? dayjs(dates[0]).format('YYYY-MM-DD') : ''
+    form.endDate = dates[1] ? dayjs(dates[1]).format('YYYY-MM-DD') : ''
+    console.log('日期已更新:', { startDate: form.startDate, endDate: form.endDate })
   } else {
     form.startDate = ''
     form.endDate = ''
+    console.log('日期已清空')
   }
 }
 
@@ -379,14 +391,59 @@ const calculateReimbursement = async (formEl: FormInstance | undefined) => {
   await formEl.validate(async (valid) => {
     if (valid) {
       try {
-        const res = await reimbursementApi.calculate(form.personId, {
+        const response: any = await reimbursementApi.calculate(form.personId, {
           hospitalLevel: form.hospitalLevel,
+          peopleType: form.peopleType,
           startDate: form.startDate,
           endDate: form.endDate
         })
-        form.calculationResult = res
+        
+        // 检查返回的数据结构是否完整
+        if (!response || response.code !== 200 || !response.data) {
+          ElMessage.error('计算报销金额失败: 无效的响应数据')
+          return
+        }
+        
+        console.log('报销计算结果:', response)
+        
+        // 获取API返回的数据
+        const apiData = response.data;
+        const apiExpenseSummary = apiData.expenseSummary || {};
+        const apiReimbursementResult = apiData.reimbursementResult || {};
+        
+        // 创建标准格式的结果对象
+        const standardResult: ReimbursementCalculation = {
+          expenseSummary: {
+            totalAmount: apiExpenseSummary.totalExpense || 0,
+            totalDrugAmount: apiExpenseSummary.drugExpense || 0,
+            categoryADrugAmount: apiExpenseSummary.categoryADrugExpense || 0,
+            categoryBDrugAmount: apiExpenseSummary.categoryBDrugExpense || 0,
+            categoryCDrugAmount: apiExpenseSummary.categoryCDrugExpense || 0,
+            treatmentAmount: apiExpenseSummary.treatmentExpense || 0,
+            serviceAmount: apiExpenseSummary.serviceExpense || 0
+          },
+          reimbursementResult: {
+            deductibleAmount: apiReimbursementResult.deductibleAmount || 0,
+            aboveDeductibleAmount: apiReimbursementResult.aboveDeductibleAmount || 0,
+            overallReimbursementRatio: 0, // 需要从其他字段计算
+            totalReimbursementAmount: apiReimbursementResult.totalReimbursementAmount || 0,
+            totalSelfPayAmount: apiReimbursementResult.totalSelfPayAmount || 0,
+            insuranceFundAmount: apiReimbursementResult.insuranceFundAmount || 0,
+            personalPayAmount: apiReimbursementResult.totalSelfPayAmount || 0 // 使用totalSelfPayAmount作为personalPayAmount
+          }
+        }
+        
+        // 计算报销比例
+        if (standardResult.reimbursementResult.aboveDeductibleAmount > 0) {
+          standardResult.reimbursementResult.overallReimbursementRatio = 
+            Math.round((standardResult.reimbursementResult.totalReimbursementAmount / 
+                      standardResult.reimbursementResult.aboveDeductibleAmount) * 100);
+        }
+        
+        form.calculationResult = standardResult
       } catch (error) {
         console.error('计算报销金额失败:', error)
+        ElMessage.error('计算报销金额失败，请检查参数或联系管理员')
       }
     }
   })
@@ -400,6 +457,7 @@ const executeReimbursement = async (formEl: FormInstance | undefined) => {
       try {
         await reimbursementApi.execute(form.personId, {
           hospitalLevel: form.hospitalLevel,
+          peopleType: form.peopleType,
           startDate: form.startDate,
           endDate: form.endDate,
           approver: form.approver,
@@ -471,7 +529,7 @@ const formatDateTime = (date: string | undefined | null) => {
   if (!date) {
     return '未知'
   }
-  return dayjs(date).format('YYYY-MM-DD HH:mm:ss')
+  return dayjs(date).format('YYYY-MM-DD')
 }
 
 // 状态类型
@@ -500,6 +558,16 @@ const statusText = (status: string) => {
     default:
       return '未知'
   }
+}
+
+// 用于测试日期值
+const debugDateValues = () => {
+  console.log('当前日期值:', {
+    dateRange: form.dateRange,
+    startDate: form.startDate,
+    endDate: form.endDate
+  })
+  ElMessage.info(`起始日期: ${form.startDate || '未选择'}, 结束日期: ${form.endDate || '未选择'}`)
 }
 
 // 初始化
