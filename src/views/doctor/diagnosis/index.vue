@@ -197,7 +197,7 @@
                 type="datetime"
                 placeholder="请选择诊断时间"
                 format="YYYY-MM-DD HH:mm:ss"
-                value-format="iso"
+                value-format="YYYY-MM-DD"
                 style="width: 100%"
               />
             </el-form-item>
@@ -317,7 +317,7 @@ const form = reactive<Partial<PatientDiagnosisVO>>({
   diseaseCategory: '',
   diseaseCode: '',
   diseaseICD: '',
-  orderTime: new Date().toISOString()
+  orderTime: dayjs().format("YYYY-MM-DD")
 })
 
 // 表单校验规则
@@ -409,7 +409,7 @@ resetForm = () => {
     diseaseCategory: '',
     diseaseCode: '',
     diseaseICD: '',
-    orderTime: new Date().toISOString()
+    orderTime: dayjs().format("YYYY-MM-DD")
   })
   diseaseOptions.value = []
   patientOptions.value = []

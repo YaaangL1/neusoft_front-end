@@ -119,6 +119,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as echarts from 'echarts'
 import type { DashboardStatistics, DashboardActivity } from '@/api/dashboard'
+import dayjs from 'dayjs'
 
 // Mock data generation functions (moved from mock files)
 // 生成随机数
@@ -161,7 +162,7 @@ const generateMockActivities = (): DashboardActivity[] => {
     title: activityTitles[random(0, activityTitles.length - 1)],
     content: `这是第 ${index + 1} 条活动记录的详细内容`,
     type: activityTypes[random(0, activityTypes.length - 1)],
-    createdTime: new Date(Date.now() - random(0, 7) * 24 * 60 * 60 * 1000).toISOString()
+    createdTime: dayjs(new Date(Date.now() - random(0, 7) * 24 * 60 * 60 * 1000)).format("YYYY-MM-DD")
   }))
 }
 

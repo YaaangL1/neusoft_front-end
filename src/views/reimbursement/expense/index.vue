@@ -21,22 +21,15 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="费用类型">
-          <el-select v-model="searchForm.expenseType" placeholder="请选择费用类型" clearable>
-            <el-option label="药品费用" value="drug" />
-            <el-option label="诊疗费用" value="treatment" />
-            <el-option label="医疗服务费用" value="service" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="费用日期">
+        <el-form-item label="日期范围">
           <el-date-picker
-            v-model="searchForm.dateRange"
+            v-model="dateRange"
             type="daterange"
             range-separator="至"
             start-placeholder="开始日期"
             end-placeholder="结束日期"
             value-format="YYYY-MM-DD"
-            @change="handleDateRangeChange"
+            @change="handleDateChange"
           />
         </el-form-item>
         <el-form-item>
@@ -99,7 +92,7 @@
 
     <!-- 图表展示 -->
     <el-row :gutter="20" class="chart-row">
-      <el-col :span="12">
+      <el-col :span="24">
         <el-card class="chart-card">
           <template #header>
             <div class="card-header">
@@ -109,24 +102,13 @@
           <div ref="pieChartRef" class="chart"></div>
         </el-card>
       </el-col>
-
-      <el-col :span="12">
-        <el-card class="chart-card">
-          <template #header>
-            <div class="card-header">
-              <span>费用趋势</span>
-            </div>
-          </template>
-          <div ref="lineChartRef" class="chart"></div>
-        </el-card>
-      </el-col>
     </el-row>
 
     <!-- 明细表格 -->
     <el-card class="table-card">
       <template #header>
         <div class="card-header">
-          <span>费用明细</span>
+          <span>费用类型明细</span>
           <el-button-group>
           <el-button type="primary" @click="handleExport">
             <el-icon><Download /></el-icon>
@@ -138,42 +120,25 @@
 
       <el-table
         v-loading="loading"
-        :data="tableData"
+        :data="expenseTypeData"
         border
         stripe
         style="width: 100%"
       >
         <el-table-column type="index" label="序号" width="60" align="center" />
-        <el-table-column prop="expenseType" label="费用类型" width="120">
-          <template #default="{ row }">
-            {{ expenseTypeText(row.expenseType) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="expenseDate" label="费用日期" width="120">
-          <template #default="{ row }">
-            {{ formatDate(row.expenseDate) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="amount" label="费用金额" width="120">
+        <el-table-column prop="categoryName" label="费用类型" width="150" />
+        <el-table-column prop="amount" label="费用金额" width="150">
           <template #default="{ row }">
             ¥{{ formatAmount(row.amount) }}
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="说明" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="percentage" label="占比" width="100">
+          <template #default="{ row }">
+            {{ row.percentage }}%
+          </template>
+        </el-table-column>
+        <el-table-column prop="itemCount" label="项目数量" width="100" />
       </el-table>
-
-      <!-- 分页 -->
-      <div class="pagination">
-        <el-pagination
-          v-model:current-page="pagination.pageNum"
-          v-model:page-size="pagination.pageSize"
-          :page-sizes="[10, 20, 30, 50]"
-          :total="pagination.total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
     </el-card>
   </div>
 </template>
@@ -190,11 +155,23 @@ import * as echarts from 'echarts'
 // 搜索表单
 const searchForm = reactive({
   personId: undefined as number | undefined,
-  expenseType: undefined as string | undefined,
-  dateRange: [] as string[],
   startDate: undefined as string | undefined,
-  endDate: undefined as string | undefined
+  endDate: undefined as string | undefined,
 })
+
+// 日期范围
+const dateRange = ref<[string, string] | null>(null)
+
+// 处理日期变化
+const handleDateChange = (val: [string, string] | null) => {
+  if (val) {
+    searchForm.startDate = val[0]
+    searchForm.endDate = val[1]
+  } else {
+    searchForm.startDate = undefined
+    searchForm.endDate = undefined
+  }
+}
 
 // 参保人选项
 const personLoading = ref(false)
@@ -217,12 +194,11 @@ const pagination = reactive({
 // 表格数据
 const loading = ref(false)
 const tableData = ref<ExpenseDetail[]>([])
+const expenseTypeData = ref<{categoryName: string; amount: number; percentage: number; itemCount: number}[]>([])
 
 // 图表实例
 const pieChartRef = ref<HTMLElement>()
-const lineChartRef = ref<HTMLElement>()
 let pieChart: echarts.ECharts | null = null
-let lineChart: echarts.ECharts | null = null
 
 // 搜索参保人
 const searchPerson = async (query: string) => {
@@ -241,7 +217,7 @@ const searchPerson = async (query: string) => {
   }
 }
 
-// 获取费用明细
+// 获取费用数据
 const fetchExpenses = async () => {
   if (!searchForm.personId) {
     ElMessage.warning('请选择参保人')
@@ -250,30 +226,124 @@ const fetchExpenses = async () => {
 
   loading.value = true
   try {
+    // 获取费用明细数据
     const res = await expenseApi.getExpenses({
       personId: searchForm.personId,
-      expenseType: searchForm.expenseType,
       startDate: searchForm.startDate,
-      endDate: searchForm.endDate
+      endDate: searchForm.endDate,
+      expenseType: 'drug' // 默认查询药品费用
     })
     tableData.value = res
-    pagination.total = res.length
-
-    // 更新统计数据
-    statistics.totalAmount = res.reduce((sum: number, item: ExpenseDetail) => sum + item.amount, 0)
-    statistics.drugAmount = res
-      .filter((item: ExpenseDetail) => item.expenseType === 'drug')
-      .reduce((sum: number, item: ExpenseDetail) => sum + item.amount, 0)
-    statistics.treatmentAmount = res
-      .filter((item: ExpenseDetail) => item.expenseType === 'treatment')
-      .reduce((sum: number, item: ExpenseDetail) => sum + item.amount, 0)
-
-    // 更新图表
-    updateCharts()
+    
+    // 渲染图表和更新统计数据（在renderCharts方法中使用综合报告数据更新统计信息）
+    await nextTick()
+    await renderCharts()
   } catch (error) {
-    console.error('获取费用明细失败:', error)
+    console.error('获取费用数据失败:', error)
   } finally {
     loading.value = false
+  }
+}
+
+// 更新统计数据（注：此方法已不再使用，统计数据现在从综合报告API获取）
+const updateStatistics = () => {
+  // 此方法保留但不再使用，统计数据现在从综合报告API获取并在renderCharts方法中更新
+  // 以下代码仅作为备份
+  /*
+  statistics.totalAmount = tableData.value.reduce((sum: number, item: ExpenseDetail) => sum + item.amount, 0)
+  statistics.drugAmount = tableData.value
+    .filter((item: ExpenseDetail) => item.expenseType === 'drug')
+    .reduce((sum: number, item: ExpenseDetail) => sum + item.amount, 0)
+  statistics.treatmentAmount = tableData.value
+    .filter((item: ExpenseDetail) => item.expenseType === 'treatment')
+    .reduce((sum: number, item: ExpenseDetail) => sum + item.amount, 0)
+  */
+}
+
+// 渲染图表
+const renderCharts = async () => {
+  try {
+    // 费用类型分布图
+    if (!searchForm.personId) return;
+    
+    // 获取综合报告数据
+    const reportResponse = await expenseApi.getComprehensiveReport(
+      searchForm.personId,
+      searchForm.startDate,
+      searchForm.endDate
+    );
+    
+    console.log('综合报告数据:', reportResponse);
+    
+    if (reportResponse && reportResponse.data) {
+      const reportData = reportResponse.data;
+      
+      // 更新统计数据
+      if (reportData.expenseSummary) {
+        // 设置总金额
+        statistics.totalAmount = reportData.expenseSummary.totalAmount || 0;
+        
+        // 累加各类药品费用
+        statistics.drugAmount = 
+          (reportData.expenseSummary.categoryADrugAmount || 0) + 
+          (reportData.expenseSummary.categoryBDrugAmount || 0) + 
+          (reportData.expenseSummary.categoryCDrugAmount || 0);
+        
+        // 获取诊疗费用
+        statistics.treatmentAmount = reportData.expenseSummary.treatmentAmount || 0;
+      }
+      
+      // 从费用类型比例中获取药品费用（如果上面的方法没有获取到数据）
+      if (statistics.drugAmount === 0 && reportData.expenseTypeRatio) {
+        const drugTypeData = reportData.expenseTypeRatio.find(item => 
+          item.categoryName === '药品费用' || item.categoryName === '药品');
+        if (drugTypeData) {
+          statistics.drugAmount = drugTypeData.amount || 0;
+        }
+      }
+      
+      // 更新费用类型饼图
+      if (pieChart && reportData.expenseTypeRatio && Array.isArray(reportData.expenseTypeRatio) && reportData.expenseTypeRatio.length > 0) {
+        console.log('费用类型分布数据:', reportData.expenseTypeRatio);
+        
+        // 构建饼图数据
+        const pieData = reportData.expenseTypeRatio.map(item => ({
+          name: item.categoryName || '未知类型',
+          value: item.amount || 0
+        }));
+        
+        // 更新饼图
+        pieChart.setOption({
+          series: [{
+            data: pieData
+          }]
+        });
+      } else {
+        console.warn('费用类型分布数据为空或格式不正确');
+        if (pieChart) {
+          pieChart.setOption({
+            series: [{
+              data: [
+                { name: '暂无数据', value: 0 }
+              ]
+            }]
+          });
+        }
+      }
+      
+      // 更新药品分类饼图（如果需要）
+      if (reportData.drugCategoryRatio && Array.isArray(reportData.drugCategoryRatio) && reportData.drugCategoryRatio.length > 0) {
+        console.log('药品分类占比数据:', reportData.drugCategoryRatio);
+        // 此处可以添加另一个饼图来显示药品分类占比
+      }
+      
+      // 更新费用类型数据表格
+      if (reportData.expenseTypeRatio && Array.isArray(reportData.expenseTypeRatio)) {
+        expenseTypeData.value = reportData.expenseTypeRatio;
+      }
+    }
+  } catch (error) {
+    console.error('渲染图表失败:', error);
   }
 }
 
@@ -320,114 +390,23 @@ const initPieChart = () => {
   pieChart.setOption(option)
 }
 
-// 初始化折线图
-const initLineChart = () => {
-  if (!lineChartRef.value) return
-
-  // 确保元素有高度和宽度
-  if (lineChartRef.value.clientHeight === 0 || lineChartRef.value.clientWidth === 0) {
-    setTimeout(initLineChart, 100)
-    return
-  }
-
-  if (lineChart) {
-    lineChart.dispose()
-  }
-
-  lineChart = echarts.init(lineChartRef.value)
-  const option = {
-    tooltip: {
-      trigger: 'axis'
-    },
-    legend: {
-      data: ['费用金额']
-    },
-    xAxis: {
-      type: 'category',
-      data: []
-    },
-    yAxis: {
-      type: 'value'
-    },
-    series: [
-      {
-        name: '费用金额',
-        type: 'line',
-        data: []
-      }
-    ]
-  }
-  lineChart.setOption(option)
-}
-
-// 更新图表数据
-const updateCharts = async () => {
-  if (!searchForm.personId) return
-
-  try {
-    // 更新饼图
-    const typeData = await expenseApi.getExpenseTypeChart(
-      searchForm.personId,
-      searchForm.startDate,
-      searchForm.endDate
-    )
-    if (pieChart) {
-      pieChart.setOption({
-        series: [{
-          data: typeData.map(item => ({
-            name: expenseTypeText(item.type),
-            value: item.amount
-          }))
-        }]
-      })
-    }
-
-    // 更新折线图
-    if (lineChart) {
-      lineChart.setOption({
-        xAxis: {
-          data: tableData.value.map(item => formatDate(item.expenseDate))
-        },
-        series: [{
-          data: tableData.value.map(item => item.amount)
-        }]
-      })
-    }
-  } catch (error) {
-    console.error('更新图表数据失败:', error)
-  }
-}
-
-// 处理日期范围变化
-const handleDateRangeChange = (val: [string, string] | null) => {
-  if (val) {
-    searchForm.startDate = val[0]
-    searchForm.endDate = val[1]
-  } else {
-    searchForm.startDate = undefined
-    searchForm.endDate = undefined
-  }
-}
-
 // 处理查询
 const handleSearch = () => {
   pagination.pageNum = 1
   fetchExpenses()
 }
 
-// 重置查询
+// 重置搜索
 const resetSearch = () => {
-  Object.assign(searchForm, {
-    personId: undefined,
-    expenseType: undefined,
-    dateRange: [],
-    startDate: undefined,
-    endDate: undefined
-  })
+  searchForm.personId = undefined
+  searchForm.startDate = undefined
+  searchForm.endDate = undefined
+  dateRange.value = null
   personOptions.value = []
+  handleSearch()
 }
 
-// 处理导出
+// 导出Excel
 const handleExport = async () => {
   if (!searchForm.personId) {
     ElMessage.warning('请选择参保人')
@@ -436,19 +415,18 @@ const handleExport = async () => {
 
   try {
     const blob = await expenseApi.exportExpenses(searchForm.personId, {
-      expenseType: searchForm.expenseType,
+      expenseType: 'drug', // 默认导出药品费用
       startDate: searchForm.startDate,
       endDate: searchForm.endDate
     })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = '费用明细.xlsx'
+    link.download = `费用明细_${dayjs().format('YYYY-MM-DD')}.xlsx`
     link.click()
     window.URL.revokeObjectURL(url)
   } catch (error) {
-    console.error('导出失败:', error)
-    ElMessage.error('导出失败')
+    console.error('导出Excel失败:', error)
   }
 }
 
@@ -464,7 +442,10 @@ const handleCurrentChange = (val: number) => {
 }
 
 // 格式化金额
-const formatAmount = (amount: number) => {
+const formatAmount = (amount: number | undefined | null) => {
+  if (amount === undefined || amount === null) {
+    return '0.00'
+  }
   return amount.toFixed(2)
 }
 
@@ -490,14 +471,12 @@ const expenseTypeText = (type: string) => {
 // 监听窗口大小变化
 const handleResize = () => {
   pieChart?.resize()
-  lineChart?.resize()
 }
 
 onMounted(() => {
   // 使用 nextTick 确保 DOM 已经渲染
   nextTick(() => {
     initPieChart()
-    initLineChart()
   })
   window.addEventListener('resize', handleResize)
 })
@@ -505,7 +484,6 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   pieChart?.dispose()
-  lineChart?.dispose()
 })
 </script>
 

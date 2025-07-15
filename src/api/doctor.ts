@@ -34,10 +34,10 @@ export const diagnosisApi = {
       diseaseId: Number(data.diseaseId),
       diseaseType: Number(data.diseaseType),
       patientId: Number(data.patientId),
-      orderTime: data.orderTime ? dayjs(data.orderTime).format('YYYY-MM-DD HH:mm:ss') : dayjs().format('YYYY-MM-DD HH:mm:ss')
+      orderTime: data.orderTime ? dayjs(data.orderTime).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')
     }
     if (data.createdTime) {
-      submitData.createdTime = dayjs(data.createdTime).format('YYYY-MM-DD HH:mm:ss')
+      submitData.createdTime = dayjs(data.createdTime).format('YYYY-MM-DD')
     }
     return request.post<Result<string>>('/api/patient-diagnoses', submitData, {
       headers: {
@@ -54,7 +54,7 @@ export const diagnosisApi = {
       diseaseId: Number(data.diseaseId),
       diseaseType: Number(data.diseaseType),
       patientId: Number(data.patientId),
-      orderTime: data.orderTime || new Date().toISOString()
+      orderTime: data.orderTime ? dayjs(data.orderTime).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')
     }
     return request.put<Result<string>>(`/api/patient-diagnoses/${id}`, submitData, {
       headers: {
