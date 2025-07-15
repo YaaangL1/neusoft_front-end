@@ -58,6 +58,7 @@ export const expenseApi = {
     
     return request.get<Result<ExpenseDetail[]>>(url, {
       params: {
+        personId: params.personId,
         startDate: params.startDate,
         endDate: params.endDate
       }
@@ -69,24 +70,89 @@ export const expenseApi = {
 
   // 获取费用类型分布
   getExpenseTypeChart(personId: number, startDate?: string, endDate?: string) {
-    return request.get<{ type: string; amount: number; percentage: number }[]>(
+    return request.get<Result<{ type: string; amount: number; percentage: number }[]>>(
       `/api/reimbursement-reports/persons/${personId}/expense-type-chart`,
-      { params: { startDate, endDate } }
-    )
+      { params: { personId, startDate, endDate } }
+    ).then(response => {
+      // 确保返回的是数组
+      if (response.data && Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && typeof response.data === 'object') {
+        // 处理可能的嵌套数据结构
+        const data = response.data as any;
+        if (data.data && Array.isArray(data.data)) {
+          return data.data;
+        }
+      }
+      // 默认返回空数组
+      console.warn('费用类型分布数据格式不正确:', response);
+      return [];
+    })
   },
 
   // 获取药品分类占比
   getDrugCategoryChart(personId: number, startDate?: string, endDate?: string) {
-    return request.get<{ type: string; amount: number; percentage: number }[]>(
+    return request.get<Result<{ type: string; amount: number; percentage: number }[]>>(
       `/api/reimbursement-reports/persons/${personId}/drug-category-chart`,
-      { params: { startDate, endDate } }
+      { params: { personId, startDate, endDate } }
+    ).then(response => {
+      // 确保返回的是数组
+      if (response.data && Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && typeof response.data === 'object') {
+        // 处理可能的嵌套数据结构
+        const data = response.data as any;
+        if (data.data && Array.isArray(data.data)) {
+          return data.data;
+        }
+      }
+      // 默认返回空数组
+      console.warn('药品分类占比数据格式不正确:', response);
+      return [];
+    })
+  },
+
+  // 获取综合报告
+  getComprehensiveReport(personId: number, startDate?: string, endDate?: string) {
+    return request.get<Result<{
+      patientId: number;
+      patientName: string;
+      caseNumber: string;
+      totalAmount: number;
+      drugCategoryRatio: {
+        categoryName: string;
+        amount: number;
+        percentage: number;
+        itemCount: number;
+      }[];
+      expenseTypeRatio: {
+        categoryName: string;
+        amount: number;
+        percentage: number;
+        itemCount: number;
+      }[];
+      expenseSummary: {
+        categoryADrugAmount: number;
+        categoryBDrugAmount: number;
+        categoryCDrugAmount: number;
+        treatmentAmount: number;
+        serviceAmount: number;
+        totalDrugAmount: number;
+        totalAmount: number;
+      };
+    }>>(
+      `/api/reimbursement-reports/persons/${personId}/comprehensive-report`,
+      { params: { personId, startDate, endDate } }
     )
   },
 
   // 导出费用明细
   exportExpenses(personId: number, params: { expenseType?: string; startDate?: string; endDate?: string }) {
     return request.get(`/api/expense-query/persons/${personId}/expenses/export`, {
-      params,
+      params: {
+        ...params,
+        personId
+      },
       responseType: 'blob'
     })
   }
@@ -105,18 +171,20 @@ export const reimbursementApi = {
   },
 
   // 计算报销金额
-  calculate(personId: number, params: Omit<ReimbursementCalculationParams, 'personId'>) {
-    return request.get<ReimbursementCalculation>(
+  calculate(personId: number, params: ReimbursementCalculationParams) {
+    return request.post<ReimbursementCalculation>(
       `/api/reimbursement/persons/${personId}/calculate`,
+      null,
       { params }
     )
   },
 
   // 执行报销
-  execute(personId: number, params: Omit<ReimbursementExecuteParams, 'personId'>) {
+  execute(personId: number, params: ReimbursementExecuteParams) {
     return request.post<ReimbursementRecord>(
       `/api/reimbursement/persons/${personId}/execute`,
-      params
+      null,
+      { params }
     )
   },
 
@@ -124,7 +192,12 @@ export const reimbursementApi = {
   getHistory(personId: number, params?: { startDate?: string; endDate?: string }) {
     return request.get<Result<ReimbursementRecord[]>>(
       `/api/reimbursement/persons/${personId}/history`,
-      { params }
+      { 
+        params: {
+          ...params,
+          personId
+        }
+      }
     ).then(response => {
       // 确保返回的是数组
       return Array.isArray(response.data) ? response.data : []

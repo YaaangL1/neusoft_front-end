@@ -205,8 +205,9 @@ export interface ExpenseQuery {
 }
 
 export interface ReimbursementCalculationParams {
-  personId: number
+  personId?: number
   hospitalLevel: string
+  peopleType?: string
   startDate?: string
   endDate?: string
 }

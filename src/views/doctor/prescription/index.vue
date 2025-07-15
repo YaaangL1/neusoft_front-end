@@ -177,7 +177,7 @@
             range-separator="至"
             start-placeholder="开始时间"
             end-placeholder="结束时间"
-            value-format="YYYY-MM-DD HH:mm:ss"
+            value-format="YYYY-MM-DD"
             style="width: 100%"
           />
         </el-form-item>
@@ -448,7 +448,7 @@ const handleSubmit = async () => {
         }
         
         // 构建最简单的请求体，严格按照API文档要求
-        const currentTime = new Date().toISOString();
+        const currentTime = dayjs().format("YYYY-MM-DD");
         
         // 严格按照API文档中的字段顺序构建请求体
         const requestBody: Record<string, any> = {};
@@ -590,7 +590,7 @@ const handleCurrentChange = (val: number) => {
 
 // 格式化日期
 const formatDate = (date: string) => {
-  return dayjs(date).format('YYYY-MM-DD HH:mm:ss')
+  return dayjs(date).format('YYYY-MM-DD')
 }
 
 // 处方状态

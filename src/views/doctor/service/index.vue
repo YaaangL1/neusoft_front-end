@@ -357,7 +357,7 @@ const form = reactive<Partial<PatientMedicalServiceVO>>({
   medicalExclude: '',
   doctorOrder: '',
   useMethod: '',
-  orderTime: new Date().toISOString(),
+  orderTime: dayjs().format("YYYY-MM-DD"),
   status: 1,
   createdTime: '',
   updatedTime: ''
@@ -510,7 +510,7 @@ const handleSubmit = async () => {
         }
         
         // 确保数据类型正确
-        const currentTime = new Date().toISOString()
+        const currentTime = dayjs().format("YYYY-MM-DD")
         
         // 严格按照API文档构建请求体
         // 参考文档12.1 新增患者医疗服务
@@ -573,7 +573,7 @@ const resetForm = () => {
     medicalExclude: '',
     doctorOrder: '',
     useMethod: '',
-    orderTime: new Date().toISOString(),
+    orderTime: dayjs().format("YYYY-MM-DD"),
     status: 1,
     createdTime: '',
     updatedTime: ''
@@ -593,7 +593,7 @@ const handleCurrentChange = (val: number) => {
 
 // 格式化日期
 const formatDate = (date: string) => {
-  return dayjs(date).format('YYYY-MM-DD HH:mm:ss')
+  return dayjs(date).format('YYYY-MM-DD')
 }
 
 // 医疗服务状态

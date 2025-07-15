@@ -174,9 +174,10 @@
           <el-date-picker
             v-model="form.orderTime"
             type="datetime"
-            placeholder="请选择开立时间"
-            value-format="YYYY-MM-DD HH:mm:ss"
-                  style="width: 100%"
+            placeholder="请选择医嘱时间"
+            format="YYYY-MM-DD HH:mm:ss"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
           />
         </el-form-item>
         <el-form-item label="医嘱内容" prop="doctorOrder">
@@ -457,7 +458,7 @@ const handleCurrentChange = (val: number) => {
 
 // 格式化日期
 const formatDate = (date: string) => {
-  return dayjs(date).format('YYYY-MM-DD HH:mm:ss')
+  return dayjs(date).format('YYYY-MM-DD')
 }
 
 // 状态
