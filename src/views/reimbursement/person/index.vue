@@ -6,7 +6,7 @@
       <el-form-item label="参保人姓名">
         <el-input v-model="searchForm.personName" placeholder="请输入参保人姓名" clearable />
       </el-form-item>
-      <el-form-item label="参保状态">
+      <!-- <el-form-item label="参保状态">
         <el-select v-model="searchForm.insuranceStatus" placeholder="请选择参保状态" clearable>
           <el-option label="已参保" value="1" />
           <el-option label="未参保" value="0" />
@@ -17,7 +17,7 @@
           <el-option label="在职" value="1" />
           <el-option label="退休" value="0" />
         </el-select>
-      </el-form-item>
+      </el-form-item> -->
       <el-form-item>
         <el-button type="primary" @click="handleSearch">查询</el-button>
         <el-button @click="resetSearch">重置</el-button>
@@ -45,7 +45,6 @@
       <el-table-column label="操作" width="250" fixed="right">
         <template #default="{ row }">
           <el-button-group>
-            <el-button type="primary" link @click="openDialog('calculate', row)">报销</el-button>
             <el-button type="success" link @click="openDialog('expense', row)">费用</el-button>
             <el-button type="warning" link @click="openDialog('history', row)">历史</el-button>
           </el-button-group>
@@ -74,72 +73,7 @@
       :close-on-click-modal="false"
       :close-on-press-escape="false"
     >
-      <template v-if="dialogType === 'calculate'">
-        <!-- 报销计算表单 -->
-        <el-form
-          ref="formRef"
-          :model="form"
-          :rules="rules"
-          label-width="120px"
-          class="reimbursement-form"
-        >
-          <el-form-item label="医院等级" prop="hospitalLevel">
-            <el-select v-model="form.hospitalLevel" placeholder="请选择医院等级">
-              <el-option label="一级医院" value="一级" />
-              <el-option label="二级医院" value="二级" />
-              <el-option label="三级医院" value="三级" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="费用日期" prop="dateRange">
-            <el-date-picker
-              v-model="form.dateRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              @change="handleDateRangeChange"
-            />
-          </el-form-item>
-          <el-form-item label="审批人" prop="approver" v-if="form.calculationResult">
-            <el-input v-model="form.approver" placeholder="请输入审批人姓名" />
-          </el-form-item>
-          <el-form-item label="备注" prop="remark" v-if="form.calculationResult">
-            <el-input
-              v-model="form.remark"
-              type="textarea"
-              :rows="3"
-              placeholder="请输入备注信息"
-            />
-          </el-form-item>
-        </el-form>
-
-        <!-- 计算结果展示 -->
-        <div v-if="form.calculationResult" class="calculation-result">
-          <el-descriptions title="费用报销计算结果" :column="2" border>
-            <el-descriptions-item label="总费用">
-              {{ formatAmount(form.calculationResult.expenseSummary.totalAmount) }}
-            </el-descriptions-item>
-            <el-descriptions-item label="起付线">
-              {{ formatAmount(form.calculationResult.reimbursementResult.deductibleAmount) }}
-            </el-descriptions-item>
-            <el-descriptions-item label="超过起付线金额">
-              {{ formatAmount(form.calculationResult.reimbursementResult.aboveDeductibleAmount) }}
-            </el-descriptions-item>
-            <el-descriptions-item label="报销比例">
-              {{ form.calculationResult.reimbursementResult.overallReimbursementRatio }}%
-            </el-descriptions-item>
-            <el-descriptions-item label="医保基金支付">
-              {{ formatAmount(form.calculationResult.reimbursementResult.insuranceFundAmount) }}
-            </el-descriptions-item>
-            <el-descriptions-item label="个人支付">
-              {{ formatAmount(form.calculationResult.reimbursementResult.personalPayAmount) }}
-            </el-descriptions-item>
-          </el-descriptions>
-        </div>
-      </template>
-
-      <template v-else-if="dialogType === 'expense'">
+      <template v-if="dialogType === 'expense'">
         <!-- 费用明细展示 -->
         <el-table :data="expenseData" border stripe>
           <el-table-column type="index" label="序号" width="60" />
@@ -213,18 +147,6 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="dialogVisible = false">关闭</el-button>
-          <template v-if="dialogType === 'calculate'">
-            <el-button type="primary" @click="calculateReimbursement(formRef)">
-              计算
-            </el-button>
-            <el-button
-              v-if="form.calculationResult"
-              type="success"
-              @click="executeReimbursement(formRef)"
-            >
-              执行报销
-            </el-button>
-          </template>
         </span>
       </template>
     </el-dialog>
@@ -248,9 +170,7 @@ import dayjs from 'dayjs'
 
 // 搜索表单
 const searchForm = reactive({
-  personName: '',
-  insuranceStatus: '',
-  peopleType: ''
+  personName: ''
 })
 
 // 分页信息
@@ -266,11 +186,9 @@ const tableData = ref<InsuredPerson[]>([])
 
 // 弹窗相关
 const dialogVisible = ref(false)
-const dialogType = ref<'calculate' | 'expense' | 'history'>('calculate')
+const dialogType = ref<'expense' | 'history'>('expense')
 const dialogTitle = computed(() => {
   switch (dialogType.value) {
-    case 'calculate':
-      return '费用报销'
     case 'expense':
       return '费用明细'
     case 'history':
@@ -278,26 +196,6 @@ const dialogTitle = computed(() => {
     default:
       return ''
   }
-})
-
-// 表单相关
-const formRef = ref<FormInstance>()
-const form = reactive({
-  personId: 0,
-  hospitalLevel: '',
-  dateRange: [] as string[],
-  startDate: '',
-  endDate: '',
-  approver: '',
-  remark: '',
-  calculationResult: null as ReimbursementCalculation | null
-})
-
-// 表单校验规则
-const rules = reactive<FormRules>({
-  hospitalLevel: [{ required: true, message: '请选择医院等级', trigger: 'change' }],
-  dateRange: [{ required: true, message: '请选择费用日期范围', trigger: 'change' }],
-  approver: [{ required: true, message: '请输入审批人姓名', trigger: 'blur' }]
 })
 
 // 费用明细数据
@@ -315,8 +213,6 @@ const handleSearch = () => {
 // 重置搜索
 const resetSearch = () => {
   searchForm.personName = ''
-  searchForm.insuranceStatus = ''
-  searchForm.peopleType = ''
   handleSearch()
 }
 
@@ -327,7 +223,7 @@ const fetchInsuredPersons = async () => {
     const res = await insuredPersonApi.getPage({
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize,
-      ...searchForm
+      personName: searchForm.personName
     })
     tableData.value = res.list
     pagination.total = res.total
@@ -339,79 +235,16 @@ const fetchInsuredPersons = async () => {
 }
 
 // 打开弹窗
-const openDialog = (type: 'calculate' | 'expense' | 'history', row: InsuredPerson) => {
+const openDialog = (type: 'expense' | 'history', row: InsuredPerson) => {
   dialogType.value = type
   dialogVisible.value = true
-  form.personId = row.id
-
-  if (type === 'calculate') {
-    // 重置表单
-    form.hospitalLevel = ''
-    form.dateRange = []
-    form.startDate = ''
-    form.endDate = ''
-    form.approver = ''
-    form.remark = ''
-    form.calculationResult = null
-  } else if (type === 'expense') {
+  if (type === 'expense') {
     // 获取费用明细
     fetchExpenses(row.id)
   } else if (type === 'history') {
     // 获取报销历史
     fetchHistory(row.id)
   }
-}
-
-// 日期范围变化
-const handleDateRangeChange = (dates: string[]) => {
-  if (dates) {
-    form.startDate = dates[0]
-    form.endDate = dates[1]
-  } else {
-    form.startDate = ''
-    form.endDate = ''
-  }
-}
-
-// 计算报销金额
-const calculateReimbursement = async (formEl: FormInstance | undefined) => {
-  if (!formEl) return
-  await formEl.validate(async (valid) => {
-    if (valid) {
-      try {
-        const res = await reimbursementApi.calculate(form.personId, {
-          hospitalLevel: form.hospitalLevel,
-          startDate: form.startDate,
-          endDate: form.endDate
-        })
-        form.calculationResult = res
-      } catch (error) {
-        console.error('计算报销金额失败:', error)
-      }
-    }
-  })
-}
-
-// 执行报销
-const executeReimbursement = async (formEl: FormInstance | undefined) => {
-  if (!formEl) return
-  await formEl.validate(async (valid) => {
-    if (valid) {
-      try {
-        await reimbursementApi.execute(form.personId, {
-          hospitalLevel: form.hospitalLevel,
-          startDate: form.startDate,
-          endDate: form.endDate,
-          approver: form.approver,
-          remark: form.remark
-        })
-        ElMessage.success('报销成功')
-        dialogVisible.value = false
-      } catch (error) {
-        console.error('执行报销失败:', error)
-      }
-    }
-  })
 }
 
 // 查看费用明细

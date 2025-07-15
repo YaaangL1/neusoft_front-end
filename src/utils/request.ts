@@ -74,6 +74,10 @@ service.interceptors.response.use(
     console.error('响应错误:', error)
     if (error.response) {
       const { status, data } = error.response
+      // 打印更详细的错误信息
+      console.error('错误状态码:', status)
+      console.error('错误响应数据:', data)
+      
       switch (status) {
         case 400:
           ElMessage.error(data.message || '请求参数错误')
