@@ -3,10 +3,13 @@
     <!-- 搜索栏 -->
     <el-card class="search-card">
       <el-form :inline="true" :model="searchForm" ref="searchFormRef">
-        <el-form-item label="患者姓名" prop="patientName">
-          <el-input
-            v-model="searchForm.patientName"
-            placeholder="请输入患者姓名"
+        <el-form-item label="患者ID" prop="patientId">
+          <el-input-number
+            v-model="searchForm.patientId"
+            placeholder="请输入患者ID"
+            :min="1"
+            :precision="0"
+            style="width: 160px"
             clearable
             @keyup.enter="handleSearch"
           />
@@ -17,16 +20,6 @@
             placeholder="请输入项目名称"
             clearable
             @keyup.enter="handleSearch"
-          />
-        </el-form-item>
-        <el-form-item label="开立时间" prop="treatmentDate">
-          <el-date-picker
-            v-model="searchForm.treatmentDate"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD HH:mm:ss"
           />
         </el-form-item>
         <el-form-item>
@@ -136,9 +129,12 @@
         label-width="100px"
         :disabled="dialogType === 'view'"
       >
-            <el-form-item label="患者姓名" prop="patientName">
-              <el-input v-model="form.patientName" placeholder="请输入患者姓名" />
-            </el-form-item>
+        <el-form-item label="患者ID" prop="patientId" required>
+          <el-input-number v-model="form.patientId" :min="1" :precision="0" style="width: 100%" placeholder="请输入患者ID" />
+        </el-form-item>
+        <el-form-item label="患者姓名" prop="patientName">
+          <el-input v-model="form.patientName" placeholder="请输入患者姓名" />
+        </el-form-item>
         <el-form-item label="诊疗项目" prop="diagnosisId">
                 <el-select
             v-model="form.diagnosisId"
@@ -187,7 +183,7 @@
           <el-input
             v-model="form.doctorOrder"
             type="textarea"
-            rows="3"
+            :rows="3"
             placeholder="请输入医嘱内容"
           />
         </el-form-item>
@@ -216,9 +212,8 @@ import dayjs from 'dayjs'
 
 // 搜索表单
 const searchForm = reactive({
-  patientName: '',
-  treatmentName: '',
-  treatmentDate: [] as string[]
+  patientId: undefined as number | undefined,
+  treatmentName: ''
 })
 
 // 分页信息
@@ -251,6 +246,9 @@ const form = reactive<Partial<PatientTreatmentVO>>({
 
 // 表单校验规则
 const rules: FormRules = {
+  patientId: [
+    { required: true, message: '请输入患者ID', trigger: 'blur' }
+  ],
   patientName: [
     { required: true, message: '请输入患者姓名', trigger: 'blur' },
     { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
@@ -270,21 +268,30 @@ const rules: FormRules = {
 const fetchTreatmentRecords = async () => {
   loading.value = true
   try {
-    const params = {
-      ...pagination,
-      patientName: searchForm.patientName,
-      treatmentName: searchForm.treatmentName,
-      startDate: searchForm.treatmentDate?.[0],
-      endDate: searchForm.treatmentDate?.[1]
+    const params: any = {
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize
+    };
+    
+    // 只添加有值的查询参数
+    if (searchForm.patientId) {
+      params.patientId = searchForm.patientId;
     }
-    const { data } = await treatmentApi.getPage(params)
-    console.log('API返回的数据:', data.list)
-    tableData.value = data.list
-    pagination.total = data.total
+    
+    if (searchForm.treatmentName) {
+      params.treatmentName = searchForm.treatmentName;
+    }
+    
+    console.log('医疗服务项目查询参数:', params);
+    const { data } = await treatmentApi.getPage(params);
+    console.log('API返回的数据:', data.list);
+    tableData.value = data.list;
+    pagination.total = data.total;
   } catch (error) {
-    console.error('获取医疗服务项目列表失败:', error)
+    console.error('获取医疗服务项目列表失败:', error);
+    ElMessage.error('获取医疗服务项目列表失败');
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
@@ -328,9 +335,8 @@ const handleSearch = () => {
 // 重置查询
 const resetSearch = () => {
   Object.assign(searchForm, {
-    patientName: '',
-    treatmentName: '',
-    treatmentDate: []
+    patientId: undefined,
+    treatmentName: ''
   })
   handleSearch()
 }
@@ -393,17 +399,30 @@ const handleSubmit = async () => {
   await formRef.value.validate(async (valid) => {
     if (valid) {
       try {
+        // 确保必要字段存在且类型正确
+        if (!form.patientId) {
+          ElMessage.error('患者ID不能为空')
+          return
+        }
+        
+        // 确保patientId是数字类型
+        const submitData = {
+          ...form,
+          patientId: Number(form.patientId)
+        }
+        
         if (dialogType.value === 'add') {
-          await treatmentApi.add(form)
+          await treatmentApi.add(submitData)
           ElMessage.success('新增成功')
         } else {
-          await treatmentApi.update(form.id!, form)
+          await treatmentApi.update(form.id!, submitData)
           ElMessage.success('更新成功')
         }
         dialogVisible.value = false
         fetchTreatmentRecords()
       } catch (error) {
         console.error('保存失败:', error)
+        ElMessage.error('保存失败，请检查数据格式是否正确')
       }
     }
   })

@@ -3,11 +3,14 @@
     <!-- 搜索栏 -->
     <el-card class="search-card">
       <el-form :inline="true" :model="searchForm" ref="searchFormRef">
-        <el-form-item label="患者姓名" prop="patientName">
-          <el-input
-            v-model="searchForm.patientName"
-            placeholder="请输入患者姓名"
+        <el-form-item label="患者ID" prop="patientId">
+          <el-input-number
+            v-model="searchForm.patientId"
+            placeholder="请输入患者ID"
             clearable
+            :min="1"
+            :precision="0"
+            style="width: 160px"
             @keyup.enter="handleSearch"
           />
         </el-form-item>
@@ -17,16 +20,6 @@
             placeholder="请输入药品名称"
             clearable
             @keyup.enter="handleSearch"
-          />
-        </el-form-item>
-        <el-form-item label="开具日期" prop="prescriptionDate">
-          <el-date-picker
-            v-model="searchForm.prescriptionDate"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD HH:mm:ss"
           />
         </el-form-item>
         <el-form-item>
@@ -135,26 +128,29 @@
         label-width="100px"
         :disabled="dialogType === 'view'"
       >
-            <el-form-item label="患者姓名" prop="patientName">
-              <el-input v-model="form.patientName" placeholder="请输入患者姓名" />
-            </el-form-item>
-        <el-form-item label="药品" prop="drugId">
-                <el-select
+        <el-form-item label="患者ID" prop="patientId" required>
+          <el-input-number v-model="form.patientId" :min="1" :precision="0" style="width: 100%" placeholder="请输入患者ID" />
+        </el-form-item>
+        <el-form-item label="患者姓名" prop="patientName">
+          <el-input v-model="form.patientName" placeholder="请输入患者姓名" />
+        </el-form-item>
+        <el-form-item label="药品" prop="drugId" required>
+          <el-select
             v-model="form.drugId"
-                  filterable
-                  remote
-                  :remote-method="searchDrugs"
-                  placeholder="请选择药品"
-                  style="width: 100%"
+            filterable
+            remote
+            :remote-method="searchDrugs"
+            placeholder="请选择药品"
+            style="width: 100%"
             @change="handleDrugChange"
-                >
-                  <el-option
-                    v-for="item in drugOptions"
-                    :key="item.id"
+          >
+            <el-option
+              v-for="item in drugOptions"
+              :key="item.id"
               :label="item.chinaName"
-                    :value="item.id"
-                  />
-                </el-select>
+              :value="item.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="规格">
           <el-input v-model="form.specifications" disabled />
@@ -166,11 +162,11 @@
           <el-input v-model="form.useMethod" placeholder="请输入用法" />
         </el-form-item>
         <el-form-item label="频次" prop="orderNumber">
-                <el-input-number
+          <el-input-number
             v-model="form.orderNumber"
-                  :min="0"
-                  :precision="0"
-                  style="width: 100%"
+            :min="0"
+            :precision="0"
+            style="width: 100%"
             placeholder="请输入频次（次/天）"
           />
         </el-form-item>
@@ -189,7 +185,7 @@
           <el-input
             v-model="form.doctorOrder"
             type="textarea"
-            rows="3"
+            :rows="3"
             placeholder="请输入医嘱内容"
           />
         </el-form-item>
@@ -226,9 +222,8 @@ interface Drug {
 
 // 搜索表单
 const searchForm = reactive({
-  patientName: '',
-  drugName: '',
-  prescriptionDate: [] as string[]
+  patientId: undefined as number | undefined,
+  drugName: ''
 })
 
 // 分页信息
@@ -263,6 +258,9 @@ const form = reactive<Partial<PatientPrescriptionVO>>({
 
 // 表单校验规则
 const rules: FormRules = {
+  patientId: [
+    { required: true, message: '请输入患者ID', trigger: 'blur' }
+  ],
   patientName: [
     { required: true, message: '请输入患者姓名', trigger: 'blur' },
     { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
@@ -299,16 +297,27 @@ const prescriptionDateRange = computed({
 const fetchPrescriptions = async () => {
   loading.value = true
   try {
-    const { data } = await prescriptionApi.getPage({
-      ...searchForm,
-      ...pagination,
-      startDate: searchForm.prescriptionDate?.[0],
-      endDate: searchForm.prescriptionDate?.[1]
-    })
+    // 构建API请求参数，只传递必要的参数
+    const params: any = {
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize
+    }
+    
+    // 只添加有值的查询参数
+    if (searchForm.patientId) {
+      params.patientId = searchForm.patientId
+    }
+    
+    if (searchForm.drugName) {
+      params.drugName = searchForm.drugName
+    }
+    
+    const { data } = await prescriptionApi.getPage(params)
     tableData.value = data.list
     pagination.total = data.total
   } catch (error) {
     console.error('获取处方列表失败:', error)
+    ElMessage.error('获取处方列表失败')
   } finally {
     loading.value = false
   }
@@ -357,9 +366,8 @@ const handleSearch = () => {
 // 重置查询
 const resetSearch = () => {
   Object.assign(searchForm, {
-    patientName: '',
-    drugName: '',
-    prescriptionDate: []
+    patientId: undefined,
+    drugName: ''
   })
   handleSearch()
 }
@@ -428,17 +436,120 @@ const handleSubmit = async () => {
   await formRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        if (dialogType.value === 'add') {
-          await prescriptionApi.add(form)
-          ElMessage.success('新增成功')
-        } else {
-          await prescriptionApi.update(form.id!, form)
-          ElMessage.success('更新成功')
+        // 确保必要字段存在且类型正确
+        if (!form.patientId) {
+          ElMessage.error('患者ID不能为空')
+          return
         }
-        dialogVisible.value = false
-        fetchPrescriptions()
-      } catch (error) {
+        
+        if (!form.drugId) {
+          ElMessage.error('药品ID不能为空')
+          return
+        }
+        
+        // 构建最简单的请求体，严格按照API文档要求
+        const currentTime = new Date().toISOString();
+        
+        // 严格按照API文档中的字段顺序构建请求体
+        const requestBody: Record<string, any> = {};
+        
+        // 按照API文档中的字段顺序添加
+        requestBody.createdTime = currentTime;
+        requestBody.doctorOrder = form.doctorOrder || '';
+        requestBody.drugId = Number(form.drugId);
+        requestBody.endTime = form.endTime || '';
+        // id字段只在编辑时添加
+        if (dialogType.value === 'edit' && form.id) {
+          requestBody.id = Number(form.id);
+        }
+        requestBody.orderNumber = Number(form.orderNumber || 1);
+        requestBody.patientId = Number(form.patientId);
+        requestBody.startTime = form.startTime || '';
+        requestBody.status = Number(form.status || 1);
+        requestBody.updatedTime = currentTime;
+        requestBody.useMethod = form.useMethod || '';
+        
+        console.log('提交处方数据:', JSON.stringify(requestBody));
+        
+        if (dialogType.value === 'add') {
+          try {
+            // 使用原生fetch API发送请求
+            const response = await fetch('/api/patient-prescriptions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+              },
+              body: JSON.stringify(requestBody)
+            });
+            
+            let responseData;
+            try {
+              responseData = await response.json();
+            } catch (e) {
+              responseData = { error: '无法解析响应数据' };
+            }
+            
+            console.log('添加处方响应:', responseData);
+            
+            if (response.ok) {
+              ElMessage.success('新增成功');
+              dialogVisible.value = false;
+              fetchPrescriptions();
+            } else {
+              ElMessage.error(`保存失败: ${responseData.message || responseData.error || '未知错误'}`);
+            }
+          } catch (fetchError: any) {
+            console.error('Fetch错误:', fetchError);
+            ElMessage.error(`请求错误: ${fetchError.message}`);
+          }
+        } else if (dialogType.value === 'edit') {
+          if (!form.id) {
+            ElMessage.error('处方ID不能为空')
+            return
+          }
+          
+          try {
+            // 使用原生fetch API发送请求
+            const response = await fetch(`/api/patient-prescriptions/${form.id}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+              },
+              body: JSON.stringify(requestBody)
+            });
+            
+            let responseData;
+            try {
+              responseData = await response.json();
+            } catch (e) {
+              responseData = { error: '无法解析响应数据' };
+            }
+            
+            console.log('更新处方响应:', responseData);
+            
+            if (response.ok) {
+              ElMessage.success('更新成功');
+              dialogVisible.value = false;
+              fetchPrescriptions();
+            } else {
+              ElMessage.error(`保存失败: ${responseData.message || responseData.error || '未知错误'}`);
+            }
+          } catch (fetchError: any) {
+            console.error('Fetch错误:', fetchError);
+            ElMessage.error(`请求错误: ${fetchError.message}`);
+          }
+        }
+      } catch (error: any) {
         console.error('保存失败:', error)
+        // 显示详细错误信息
+        if (error.response && error.response.data) {
+          console.error('错误响应数据:', error.response.data)
+          ElMessage.error(`保存失败: ${error.response.data.message || error.message || '未知错误'}`)
+        } else {
+          ElMessage.error(`保存失败: ${error.message || '未知错误'}`)
+        }
       }
     }
   })
@@ -450,12 +561,16 @@ const resetForm = () => {
     formRef.value.resetFields()
   }
   Object.assign(form, {
-    patientName: '',
+    id: undefined,
     patientId: undefined,
+    patientName: '',
     drugId: undefined,
+    chinaName: '',
+    specifications: '',
+    drugUnit: '',
     doctorOrder: '',
     useMethod: '',
-    orderNumber: undefined,
+    orderNumber: 1,
     startTime: '',
     endTime: '',
     status: 1

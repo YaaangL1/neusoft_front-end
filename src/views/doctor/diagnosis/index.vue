@@ -56,22 +56,16 @@
         <el-table-column prop="patientName" label="患者姓名" width="120" />
         <el-table-column prop="diseaseName" label="疾病名称" width="150" />
         <el-table-column prop="diseaseCode" label="疾病编码" width="120" />
+        <el-table-column prop="diseaseICD" label="ICD编码" width="120" />
         <el-table-column prop="diseaseCategory" label="疾病类别" width="120" />
         <el-table-column prop="diseaseTypeName" label="诊断类型" width="120">
           <template #default="{ row }">
             <el-tag :type="row.diseaseType === 1 ? 'primary' : row.diseaseType === 2 ? 'success' : 'info'">
-              {{ row.diseaseTypeName }}
+              {{ row.diseaseTypeName || getDiseaseTypeName(row.diseaseType) }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="orderTime" label="诊断时间" width="180" />
-        <el-table-column prop="status" label="状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'danger'">
-              {{ row.status === 1 ? '正常' : '停用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
         <el-table-column label="操作" width="200" align="center" fixed="right">
           <template #default="{ row }">
             <el-button-group>
@@ -118,26 +112,64 @@
         :disabled="dialogType === 'view'"
       >
         <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="患者姓名" prop="patientName">
-              <el-input v-model="form.patientName" placeholder="请输入患者姓名" />
+          <el-col :span="24">
+            <el-form-item label="患者" prop="patientId">
+              <el-select
+                v-model="form.patientId"
+                filterable
+                remote
+                reserve-keyword
+                placeholder="请输入并选择患者"
+                :remote-method="remotePatientSearch"
+                :loading="patientLoading"
+                @change="handlePatientSelect"
+                style="width: 100%"
+                :disabled="dialogType === 'view'"
+              >
+                <el-option
+                  v-for="item in patientOptions"
+                  :key="item.id"
+                  :label="`${item.realName}（${item.id}）`"
+                  :value="item.id"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="疾病名称" prop="diseaseName">
-              <el-input v-model="form.diseaseName" placeholder="请输入疾病名称" />
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-form-item label="疾病" prop="diseaseId">
+              <el-select
+                v-model="form.diseaseId"
+                filterable
+                remote
+                reserve-keyword
+                placeholder="请输入并选择疾病"
+                :remote-method="remoteDiseaseSearch"
+                :loading="diseaseLoading"
+                @change="handleDiseaseSelect"
+                style="width: 100%"
+                :disabled="dialogType === 'view'"
+              >
+                <el-option
+                  v-for="item in diseaseOptions"
+                  :key="item.diseaseId"
+                  :label="`${item.diseaseName}（${item.diseaseCode || '无编码'}）`"
+                  :value="item.diseaseId"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="疾病类别" prop="diseaseCategory">
-              <el-input v-model="form.diseaseCategory" placeholder="请输入疾病类别" />
+              <el-input v-model="form.diseaseCategory" placeholder="自动填充" readonly />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="诊断类型" prop="diseaseType">
-              <el-select v-model="form.diseaseType" placeholder="请选择诊断类型">
+              <el-select v-model="form.diseaseType" placeholder="请选择诊断类型" :disabled="dialogType === 'view'">
                 <el-option label="入院诊断" :value="1" />
                 <el-option label="主要诊断" :value="2" />
                 <el-option label="其他诊断" :value="3" />
@@ -148,13 +180,27 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="疾病编码" prop="diseaseCode">
-              <el-input v-model="form.diseaseCode" placeholder="请输入疾病编码" />
-        </el-form-item>
+              <el-input v-model="form.diseaseCode" placeholder="自动填充" readonly />
+            </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="ICD编码" prop="diseaseICD">
-              <el-input v-model="form.diseaseICD" placeholder="请输入ICD编码" />
-        </el-form-item>
+              <el-input v-model="form.diseaseICD" placeholder="自动填充" readonly />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="诊断时间" prop="orderTime">
+              <el-date-picker
+                v-model="form.orderTime"
+                type="datetime"
+                placeholder="请选择诊断时间"
+                format="YYYY-MM-DD HH:mm:ss"
+                value-format="iso"
+                style="width: 100%"
+              />
+            </el-form-item>
           </el-col>
         </el-row>
       </el-form>
@@ -171,12 +217,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { diagnosisApi } from '@/api/doctor'
 import type { PatientDiagnosisVO } from '@/types/doctor'
+import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
+import { insuredPersonApi } from '@/api/insurance'
+import type { InsuredPerson } from '@/types/insurance'
+
+let resetForm: () => void // 先声明
 
 // 搜索表单
 const searchForm = reactive({
@@ -195,6 +246,16 @@ const pagination = reactive({
 const loading = ref(false)
 const tableData = ref<PatientDiagnosisVO[]>([])
 
+// 获取诊断类型名称
+const getDiseaseTypeName = (type?: number) => {
+  switch (type) {
+    case 1: return '入院诊断'
+    case 2: return '主要诊断'
+    case 3: return '其他诊断'
+    default: return '未知'
+  }
+}
+
 // 获取诊断列表
 const fetchDiagnosis = async () => {
   try {
@@ -205,11 +266,15 @@ const fetchDiagnosis = async () => {
       ...searchForm
     })
     if (res.data) {
-      tableData.value = res.data.list
+      tableData.value = res.data.list.map(item => ({
+        ...item,
+        diseaseTypeName: item.diseaseTypeName || getDiseaseTypeName(item.diseaseType)
+      }))
       pagination.total = res.data.total
     }
   } catch (error) {
     console.error('获取诊断列表失败:', error)
+    ElMessage.error('获取诊断列表失败')
   } finally {
     loading.value = false
   }
@@ -244,35 +309,110 @@ const dialogVisible = ref(false)
 const dialogType = ref<'add' | 'edit' | 'view'>('add')
 const formRef = ref<FormInstance>()
 const form = reactive<Partial<PatientDiagnosisVO>>({
+  patientId: undefined,
   patientName: '',
+  diseaseId: undefined,
   diseaseName: '',
   diseaseType: 1,
   diseaseCategory: '',
-  orderTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-  status: 1
+  diseaseCode: '',
+  diseaseICD: '',
+  orderTime: new Date().toISOString()
 })
 
 // 表单校验规则
 const rules: FormRules = {
+  patientId: [{ required: true, message: '请输入患者ID', trigger: 'blur' }],
   patientName: [{ required: true, message: '请输入患者姓名', trigger: 'blur' }],
+  diseaseId: [{ required: true, message: '请输入疾病ID', trigger: 'blur' }],
   diseaseName: [{ required: true, message: '请输入疾病名称', trigger: 'blur' }],
   diseaseType: [{ required: true, message: '请选择诊断类型', trigger: 'change' }],
-  diseaseCategory: [{ required: true, message: '请输入疾病类别', trigger: 'blur' }]
+  orderTime: [{ required: true, message: '请选择诊断时间', trigger: 'change' }]
 }
 
 // 重置表单
-const resetForm = () => {
+const diseaseOptions = ref<PatientDiagnosisVO[]>([])
+const diseaseLoading = ref(false)
+
+const remoteDiseaseSearch = async (query: string) => {
+  if (!query) {
+    diseaseOptions.value = []
+    return
+  }
+  diseaseLoading.value = true
+  try {
+    const res = await diagnosisApi.search(query)
+    if (res.data) {
+      diseaseOptions.value = res.data
+    } else {
+      diseaseOptions.value = []
+    }
+  } catch (e) {
+    diseaseOptions.value = []
+  } finally {
+    diseaseLoading.value = false
+  }
+}
+
+const handleDiseaseSelect = (diseaseId: number) => {
+  const selected = diseaseOptions.value.find(item => item.diseaseId === diseaseId)
+  if (selected) {
+    form.diseaseId = selected.diseaseId
+    form.diseaseName = selected.diseaseName
+    form.diseaseCode = selected.diseaseCode
+    form.diseaseICD = selected.diseaseICD
+    form.diseaseCategory = selected.diseaseCategory
+  }
+}
+
+const patientOptions = ref<InsuredPerson[]>([])
+const patientLoading = ref(false)
+
+const remotePatientSearch = async (query: string) => {
+  if (!query) {
+    patientOptions.value = []
+    return
+  }
+  patientLoading.value = true
+  try {
+    const res = await insuredPersonApi.search({ personName: query })
+    if (Array.isArray(res)) {
+      patientOptions.value = res
+    } else {
+      patientOptions.value = []
+    }
+  } catch (e) {
+    patientOptions.value = []
+  } finally {
+    patientLoading.value = false
+  }
+}
+
+const handlePatientSelect = (patientId: number) => {
+  const selected = patientOptions.value.find(item => item.id === patientId)
+  if (selected) {
+    form.patientId = selected.id
+    form.patientName = selected.realName
+  }
+}
+
+resetForm = () => {
   if (formRef.value) {
     formRef.value.resetFields()
   }
   Object.assign(form, {
+    patientId: undefined,
     patientName: '',
+    diseaseId: undefined,
     diseaseName: '',
     diseaseType: 1,
     diseaseCategory: '',
-    orderTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-    status: 1
+    diseaseCode: '',
+    diseaseICD: '',
+    orderTime: new Date().toISOString()
   })
+  diseaseOptions.value = []
+  patientOptions.value = []
 }
 
 // 新增诊断
@@ -319,11 +459,20 @@ const handleSubmit = async () => {
   await formRef.value.validate(async (valid) => {
     if (valid) {
       try {
+        // 构造后端需要的数据结构
+        const submitData = {
+          createdTime: form.createdTime || undefined,
+          diseaseId: form.diseaseId,
+          diseaseType: form.diseaseType,
+          id: form.id,
+          orderTime: form.orderTime,
+          patientId: form.patientId
+        }
         if (dialogType.value === 'add') {
-          await diagnosisApi.add(form)
+          await diagnosisApi.add(submitData)
           ElMessage.success('新增成功')
         } else {
-          await diagnosisApi.update(form.id!, form)
+          await diagnosisApi.update(form.id!, submitData)
           ElMessage.success('更新成功')
         }
         dialogVisible.value = false
@@ -337,7 +486,9 @@ const handleSubmit = async () => {
 }
 
 // 初始化
-fetchDiagnosis()
+onMounted(() => {
+  fetchDiagnosis()
+})
 </script>
 
 <style scoped>

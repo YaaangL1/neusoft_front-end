@@ -8,9 +8,9 @@ export interface PatientDiagnosisVO {
   diseaseName?: string
   diseaseICD?: string
   diseaseCategory?: string
-  diseaseType?: number
+  diseaseType?: number // 诊断类型（1、入院诊断，2、主要诊断，3、其他诊断）
   diseaseTypeName?: string
-  orderTime?: string
+  orderTime?: string // 疾病诊断时间
   createdTime?: string
   updatedTime?: string
 }

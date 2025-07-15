@@ -524,3 +524,45 @@ export const ratioApi = {
     }
   }
 }
+
+// 医疗服务相关API
+export const medicalServiceApi = {
+  // 分页查询医疗服务
+  async getPage(params: { pageNum: number; pageSize: number; serviceName?: string }) {
+    try {
+      console.log('调用医疗服务分页查询API，参数:', params)
+      const response = await request.get<Result<PageResult<any>>>('/api/medical-services/page', { params })
+      console.log('医疗服务分页查询API响应:', response)
+      return response
+    } catch (error) {
+      console.error('医疗服务分页查询失败:', error)
+      throw error
+    }
+  },
+
+  // 搜索医疗服务
+  async search(serviceName: string) {
+    try {
+      console.log('调用医疗服务搜索API，参数:', { serviceName })
+      const response = await request.get<Result<any[]>>('/api/medical-services/search', { params: { serviceName } })
+      console.log('医疗服务搜索API响应:', response)
+      return response
+    } catch (error) {
+      console.error('医疗服务搜索失败:', error)
+      throw error
+    }
+  },
+
+  // 获取医疗服务详情
+  async getById(serviceId: number) {
+    try {
+      console.log('调用医疗服务详情API，参数:', { serviceId })
+      const response = await request.get<Result<any>>(`/api/medical-services/${serviceId}`)
+      console.log('医疗服务详情API响应:', response)
+      return response
+    } catch (error) {
+      console.error('获取医疗服务详情失败:', error)
+      throw error
+    }
+  }
+}

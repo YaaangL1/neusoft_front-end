@@ -7,9 +7,9 @@ import App from './App.vue'
 import router from './router'
 
 // 开发环境下启用 mock
-if (import.meta.env.MODE === 'development') {
-  import('./mock')
-}
+// if (import.meta.env.MODE === 'development') {
+//   import('./mock')
+// }
 
 // 创建应用实例
 const app = createApp(App)
