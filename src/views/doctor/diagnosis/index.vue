@@ -317,7 +317,7 @@ const form = reactive<Partial<PatientDiagnosisVO>>({
   diseaseCategory: '',
   diseaseCode: '',
   diseaseICD: '',
-  orderTime: dayjs().format("YYYY-MM-DD")
+  orderTime: dayjs().format("YYYY-MM-DD HH:mm:ss")
 })
 
 // 表单校验规则
@@ -409,7 +409,7 @@ resetForm = () => {
     diseaseCategory: '',
     diseaseCode: '',
     diseaseICD: '',
-    orderTime: dayjs().format("YYYY-MM-DD")
+    orderTime: dayjs().format("YYYY-MM-DD HH:mm:ss")
   })
   diseaseOptions.value = []
   patientOptions.value = []
@@ -465,7 +465,7 @@ const handleSubmit = async () => {
           diseaseId: form.diseaseId,
           diseaseType: form.diseaseType,
           id: form.id,
-          orderTime: form.orderTime,
+          orderTime: form.orderTime ? dayjs(form.orderTime).toISOString() : undefined,
           patientId: form.patientId
         }
         if (dialogType.value === 'add') {

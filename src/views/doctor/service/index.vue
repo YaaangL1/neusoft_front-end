@@ -123,14 +123,27 @@
         :disabled="dialogType === 'view'"
       >
         <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="患者ID" prop="patientId" required>
-              <el-input-number v-model="form.patientId" :min="1" :precision="0" style="width: 100%" placeholder="请输入患者ID" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="患者姓名" prop="patientName">
-              <el-input v-model="form.patientName" placeholder="请输入患者姓名" />
+          <el-col :span="24">
+            <el-form-item label="患者" prop="patientId" required>
+              <el-select
+                v-model="form.patientId"
+                filterable
+                remote
+                reserve-keyword
+                placeholder="请输入并选择患者"
+                :remote-method="remotePatientSearch"
+                :loading="patientLoading"
+                @change="handlePatientSelect"
+                style="width: 100%"
+                :disabled="dialogType === 'view'"
+              >
+                <el-option
+                  v-for="item in patientOptions"
+                  :key="item.id"
+                  :label="`${item.realName}（${item.id}）`"
+                  :value="item.id"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -272,6 +285,8 @@ import type { PatientMedicalServiceVO } from '@/types/doctor'
 import dayjs from 'dayjs'
 import request from '@/utils/request'
 import type { Result } from '@/types'
+import { insuredPersonApi } from '@/api/insurance'
+import type { InsuredPerson } from '@/types/insurance'
 
 // 医疗服务选项
 interface MedicalService {
@@ -357,7 +372,7 @@ const form = reactive<Partial<PatientMedicalServiceVO>>({
   medicalExclude: '',
   doctorOrder: '',
   useMethod: '',
-  orderTime: dayjs().format("YYYY-MM-DD"),
+  orderTime: dayjs().format("YYYY-MM-DD HH:mm:ss"),
   status: 1,
   createdTime: '',
   updatedTime: ''
@@ -510,7 +525,7 @@ const handleSubmit = async () => {
         }
         
         // 确保数据类型正确
-        const currentTime = dayjs().format("YYYY-MM-DD")
+        const currentTime = dayjs().toISOString();
         
         // 严格按照API文档构建请求体
         // 参考文档12.1 新增患者医疗服务
@@ -518,7 +533,7 @@ const handleSubmit = async () => {
           createdTime: currentTime,
           doctorOrder: form.doctorOrder || '',
           medicalId: Number(form.medicalId),
-          orderTime: form.orderTime || currentTime,
+          orderTime: form.orderTime ? dayjs(form.orderTime).toISOString() : currentTime,
           patientId: Number(form.patientId),
           status: Number(form.status || 1),
           updatedTime: currentTime,
@@ -559,6 +574,7 @@ const resetForm = () => {
     formRef.value.resetFields()
   }
   medicalServiceOptions.value = []
+  patientOptions.value = [] // Reset patient options
   Object.assign(form, {
     id: undefined,
     patientId: undefined,
@@ -573,7 +589,7 @@ const resetForm = () => {
     medicalExclude: '',
     doctorOrder: '',
     useMethod: '',
-    orderTime: dayjs().format("YYYY-MM-DD"),
+    orderTime: dayjs().format("YYYY-MM-DD HH:mm:ss"),
     status: 1,
     createdTime: '',
     updatedTime: ''
@@ -593,7 +609,7 @@ const handleCurrentChange = (val: number) => {
 
 // 格式化日期
 const formatDate = (date: string) => {
-  return dayjs(date).format('YYYY-MM-DD')
+  return dayjs(date).format('YYYY-MM-DD HH:mm:ss')
 }
 
 // 医疗服务状态
@@ -620,6 +636,36 @@ const serviceStatusText = (status: number) => {
       return '已停止'
     default:
       return '未知'
+  }
+}
+
+// 远程搜索患者
+const patientOptions = ref<InsuredPerson[]>([])
+const patientLoading = ref(false)
+const remotePatientSearch = async (query: string) => {
+  if (!query) {
+    patientOptions.value = []
+    return
+  }
+  patientLoading.value = true
+  try {
+    const res = await insuredPersonApi.search({ personName: query })
+    if (Array.isArray(res)) {
+      patientOptions.value = res
+    } else {
+      patientOptions.value = []
+    }
+  } catch (e) {
+    patientOptions.value = []
+  } finally {
+    patientLoading.value = false
+  }
+}
+const handlePatientSelect = (patientId: number) => {
+  const selected = patientOptions.value.find(item => item.id === patientId)
+  if (selected) {
+    form.patientId = selected.id
+    form.patientName = selected.realName
   }
 }
 

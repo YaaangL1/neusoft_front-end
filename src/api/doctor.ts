@@ -29,15 +29,13 @@ export const diagnosisApi = {
   // 新增
   add(data: Partial<PatientDiagnosisVO>) {
     console.log('API层添加诊断数据:', JSON.stringify(data))
-    // 确保数据格式正确，严格按照API文档要求转换为InpatientDisease格式
+    // 直接透传时间字段为ISO格式
     const submitData: any = {
       diseaseId: Number(data.diseaseId),
       diseaseType: Number(data.diseaseType),
       patientId: Number(data.patientId),
-      orderTime: data.orderTime ? dayjs(data.orderTime).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')
-    }
-    if (data.createdTime) {
-      submitData.createdTime = dayjs(data.createdTime).format('YYYY-MM-DD')
+      orderTime: data.orderTime,
+      createdTime: data.createdTime
     }
     return request.post<Result<string>>('/api/patient-diagnoses', submitData, {
       headers: {
@@ -48,13 +46,14 @@ export const diagnosisApi = {
   // 修改
   update(id: number, data: Partial<PatientDiagnosisVO>) {
     console.log('API层更新诊断数据:', JSON.stringify(data))
-    // 确保数据格式正确，严格按照API文档要求转换为InpatientDisease格式
+    // 直接透传时间字段为ISO格式
     const submitData = {
       id: Number(id),
       diseaseId: Number(data.diseaseId),
       diseaseType: Number(data.diseaseType),
       patientId: Number(data.patientId),
-      orderTime: data.orderTime ? dayjs(data.orderTime).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')
+      orderTime: data.orderTime,
+      createdTime: data.createdTime
     }
     return request.put<Result<string>>(`/api/patient-diagnoses/${id}`, submitData, {
       headers: {
@@ -86,7 +85,7 @@ export const prescriptionApi = {
   add(data: any) {
     console.log('API层添加处方数据:', JSON.stringify(data))
     // 确保数据格式正确，严格按照API文档要求
-    const currentTime = new Date().toISOString();
+    const currentTime = dayjs().format("YYYY-MM-DD HH:mm:ss");
     const submitData = {
       createdTime: data.createdTime || currentTime,
       doctorOrder: data.doctorOrder || '',
@@ -109,7 +108,7 @@ export const prescriptionApi = {
   update(id: number, data: any) {
     console.log('API层更新处方数据:', JSON.stringify(data))
     // 确保数据格式正确，严格按照API文档要求
-    const currentTime = new Date().toISOString();
+    const currentTime = dayjs().format("YYYY-MM-DD HH:mm:ss");
     const submitData = {
       createdTime: data.createdTime || currentTime,
       doctorOrder: data.doctorOrder || '',
@@ -182,13 +181,13 @@ export const serviceApi = {
     console.log('API层添加医疗服务数据:', JSON.stringify(data))
     // 确保数据格式正确，严格按照API文档要求
     const submitData = {
-      createdTime: data.createdTime || new Date().toISOString(),
+      createdTime: data.createdTime || dayjs().format("YYYY-MM-DD HH:mm:ss"),
       doctorOrder: data.doctorOrder || '',
       medicalId: Number(data.medicalId),
-      orderTime: data.orderTime || new Date().toISOString(),
+      orderTime: data.orderTime || dayjs().format("YYYY-MM-DD HH:mm:ss"),
       patientId: Number(data.patientId),
       status: Number(data.status || 1),
-      updatedTime: data.updatedTime || new Date().toISOString(),
+      updatedTime: data.updatedTime || dayjs().format("YYYY-MM-DD HH:mm:ss"),
       useMethod: data.useMethod || ''
     }
     return request.post<Result<string>>('/api/patient-medical-services', submitData, {
@@ -202,14 +201,14 @@ export const serviceApi = {
     console.log('API层更新医疗服务数据:', JSON.stringify(data))
     // 确保数据格式正确，严格按照API文档要求
     const submitData = {
-      createdTime: data.createdTime || new Date().toISOString(),
+      createdTime: data.createdTime || dayjs().format("YYYY-MM-DD HH:mm:ss"),
       doctorOrder: data.doctorOrder || '',
       id: Number(id),
       medicalId: Number(data.medicalId),
-      orderTime: data.orderTime || new Date().toISOString(),
+      orderTime: data.orderTime || dayjs().format("YYYY-MM-DD HH:mm:ss"),
       patientId: Number(data.patientId),
       status: Number(data.status || 1),
-      updatedTime: data.updatedTime || new Date().toISOString(),
+      updatedTime: data.updatedTime || dayjs().format("YYYY-MM-DD HH:mm:ss"),
       useMethod: data.useMethod || ''
     }
     return request.put<Result<string>>(`/api/patient-medical-services/${id}`, submitData, {
