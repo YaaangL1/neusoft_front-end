@@ -400,18 +400,16 @@ const handleSubmit = async () => {
   await formRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        // 确保必要字段存在且类型正确
         if (!form.patientId) {
           ElMessage.error('患者ID不能为空')
           return
         }
-        
-        // 确保patientId是数字类型
+        // 统一时间格式为 ISO
         const submitData = {
           ...form,
-          patientId: Number(form.patientId)
+          patientId: Number(form.patientId),
+          orderTime: form.orderTime ? dayjs(form.orderTime).toISOString() : undefined
         }
-        
         if (dialogType.value === 'add') {
           await treatmentApi.add(submitData)
           ElMessage.success('新增成功')
@@ -458,7 +456,7 @@ const handleCurrentChange = (val: number) => {
 
 // 格式化日期
 const formatDate = (date: string) => {
-  return dayjs(date).format('YYYY-MM-DD')
+  return dayjs(date).format('YYYY-MM-DD HH:mm:ss')
 }
 
 // 状态

@@ -128,11 +128,26 @@
         label-width="100px"
         :disabled="dialogType === 'view'"
       >
-        <el-form-item label="患者ID" prop="patientId" required>
-          <el-input-number v-model="form.patientId" :min="1" :precision="0" style="width: 100%" placeholder="请输入患者ID" />
-        </el-form-item>
-        <el-form-item label="患者姓名" prop="patientName">
-          <el-input v-model="form.patientName" placeholder="请输入患者姓名" />
+        <el-form-item label="患者" prop="patientId" required>
+          <el-select
+            v-model="form.patientId"
+            filterable
+            remote
+            reserve-keyword
+            placeholder="请输入并选择患者"
+            :remote-method="remotePatientSearch"
+            :loading="patientLoading"
+            @change="handlePatientSelect"
+            style="width: 100%"
+            :disabled="dialogType === 'view'"
+          >
+            <el-option
+              v-for="item in patientOptions"
+              :key="item.id"
+              :label="`${item.realName}（${item.id}）`"
+              :value="item.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="药品" prop="drugId" required>
           <el-select
@@ -208,7 +223,9 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { prescriptionApi } from '@/api/doctor'
 import { drugApi } from '@/api/insurance'
+import { insuredPersonApi } from '@/api/insurance'
 import type { PatientPrescriptionVO } from '@/types/doctor'
+import type { InsuredPerson } from '@/types/insurance'
 import dayjs from 'dayjs'
 
 // 接口定义
@@ -240,6 +257,10 @@ const tableData = ref<PatientPrescriptionVO[]>([])
 // 药品选项
 const drugOptions = ref<Drug[]>([])
 
+// 患者选项
+const patientOptions = ref<InsuredPerson[]>([])
+const patientLoading = ref(false)
+
 // 表单数据
 const dialogVisible = ref(false)
 const dialogType = ref<'add' | 'edit' | 'view'>('add')
@@ -259,7 +280,7 @@ const form = reactive<Partial<PatientPrescriptionVO>>({
 // 表单校验规则
 const rules: FormRules = {
   patientId: [
-    { required: true, message: '请输入患者ID', trigger: 'blur' }
+    { required: true, message: '请选择患者', trigger: 'change' }
   ],
   patientName: [
     { required: true, message: '请输入患者姓名', trigger: 'blur' },
@@ -343,6 +364,27 @@ const searchDrugs = async (query: string) => {
   }
 }
 
+// 搜索患者
+const remotePatientSearch = async (query: string) => {
+  if (!query) {
+    patientOptions.value = []
+    return
+  }
+  patientLoading.value = true
+  try {
+    const res = await insuredPersonApi.search({ personName: query })
+    if (Array.isArray(res)) {
+      patientOptions.value = res
+    } else {
+      patientOptions.value = []
+    }
+  } catch (e) {
+    patientOptions.value = []
+  } finally {
+    patientLoading.value = false
+  }
+}
+
 // 处理药品选择变化
 const handleDrugChange = (drugId: number) => {
   const drug = drugOptions.value.find(item => item.id === drugId)
@@ -355,6 +397,15 @@ const handleDrugChange = (drugId: number) => {
       drugPrice: drug.drugPrice
   })
 }
+}
+
+// 处理患者选择变化
+const handlePatientSelect = (patientId: number) => {
+  const selected = patientOptions.value.find(item => item.id === patientId)
+  if (selected) {
+    form.patientId = selected.id
+    form.patientName = selected.realName
+  }
 }
 
 // 处理查询
@@ -438,7 +489,7 @@ const handleSubmit = async () => {
       try {
         // 确保必要字段存在且类型正确
         if (!form.patientId) {
-          ElMessage.error('患者ID不能为空')
+          ElMessage.error('患者不能为空')
           return
         }
         
@@ -447,8 +498,8 @@ const handleSubmit = async () => {
           return
         }
         
-        // 构建最简单的请求体，严格按照API文档要求
-        const currentTime = dayjs().format("YYYY-MM-DD");
+        // 统一时间格式为 ISO
+        const currentTime = dayjs().toISOString();
         
         // 严格按照API文档中的字段顺序构建请求体
         const requestBody: Record<string, any> = {};
@@ -457,14 +508,14 @@ const handleSubmit = async () => {
         requestBody.createdTime = currentTime;
         requestBody.doctorOrder = form.doctorOrder || '';
         requestBody.drugId = Number(form.drugId);
-        requestBody.endTime = form.endTime || '';
+        requestBody.endTime = form.endTime ? dayjs(form.endTime).toISOString() : '';
         // id字段只在编辑时添加
         if (dialogType.value === 'edit' && form.id) {
           requestBody.id = Number(form.id);
         }
         requestBody.orderNumber = Number(form.orderNumber || 1);
         requestBody.patientId = Number(form.patientId);
-        requestBody.startTime = form.startTime || '';
+        requestBody.startTime = form.startTime ? dayjs(form.startTime).toISOString() : '';
         requestBody.status = Number(form.status || 1);
         requestBody.updatedTime = currentTime;
         requestBody.useMethod = form.useMethod || '';
@@ -590,7 +641,7 @@ const handleCurrentChange = (val: number) => {
 
 // 格式化日期
 const formatDate = (date: string) => {
-  return dayjs(date).format('YYYY-MM-DD')
+  return dayjs(date).format('YYYY-MM-DD HH:mm:ss')
 }
 
 // 处方状态
